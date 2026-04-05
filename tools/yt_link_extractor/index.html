@@ -71,8 +71,8 @@
     </div>
 
     <script>
-        // --- IMPORTANT: Paste your YouTube Data API Key inside the quotes below ---
-        const API_KEY = 'YOUR_YOUTUBE_API_KEY_HERE';
+        // --- YOUR API KEY GOES HERE ---
+        const API_KEY = 'AIzaSyC9JVi5uZkRBQjgCWPxnvoPC8IOZDmzOuk';
 
         async function extractLinks() {
             const urlInput = document.getElementById('playlistUrl').value;
@@ -94,7 +94,7 @@
                 return;
             }
 
-            if (API_KEY === AIzaSyC9JVi5uZkRBQjgCWPxnvoPC8IOZDmzOuk) {
+            if (API_KEY === 'YOUR_YOUTUBE_API_KEY_HERE') {
                 status.innerText = 'Error: Please add your YouTube API Key inside the HTML file.';
                 return;
             }
