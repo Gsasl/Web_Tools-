@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Playlist Extractor</title>
+    <style>
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            max-width: 600px; 
+            margin: 50px auto; 
+            padding: 20px; 
+            background: #ffffff; 
+            color: #222; 
+        }
+        h1 { font-size: 1.5rem; margin-bottom: 5px; }
+        p { color: #666; font-size: 0.9rem; margin-bottom: 20px; }
+        input[type="text"] { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 10px 0; 
+            border: 1px solid #ccc; 
+            border-radius: 6px; 
+            box-sizing: border-box; 
+            font-size: 1rem;
+        }
+        button { 
+            background: #000; 
+            color: #fff; 
+            border: none; 
+            padding: 10px 20px; 
+            cursor: pointer; 
+            border-radius: 6px; 
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        button:hover { background: #333; }
+        textarea { 
+            width: 100%; 
+            height: 300px; 
+            margin-top: 20px; 
+            padding: 12px; 
+            border: 1px solid #ccc; 
+            border-radius: 6px; 
+            font-family: monospace; 
+            white-space: pre; 
+            box-sizing: border-box; 
+            resize: vertical; 
+        }
+        #status { margin-top: 10px; font-size: 0.9rem; font-weight: bold; color: #444; }
+        .flex { display: flex; gap: 10px; align-items: center; }
+        .action-row { margin-top: 10px; display: flex; justify-content: flex-end; }
+    </style>
+</head>
+<body>
+
+    <h1>NotebookLM Playlist Extractor</h1>
+    <p>Paste a YouTube playlist URL to extract clean links for NotebookLM sources.</p>
+
+    <div class="flex">
+        <input type="text" id="playlistUrl" placeholder="https://www.youtube.com/playlist?list=..." />
+        <button onclick="extractLinks()">Extract</button>
+    </div>
+    
+    <div id="status"></div>
+
+    <textarea id="output" placeholder="Video links will appear here..."></textarea>
+    
+    <div class="action-row">
+        <button onclick="copyLinks()">Copy All Links</button>
+    </div>
+
+    <script>
+        // --- IMPORTANT: Paste your YouTube Data API Key inside the quotes below ---
+        const API_KEY = 'YOUR_YOUTUBE_API_KEY_HERE';
+
+        async function extractLinks() {
+            const urlInput = document.getElementById('playlistUrl').value;
+            const output = document.getElementById('output');
+            const status = document.getElementById('status');
+            
+            output.value = '';
+            status.innerText = 'Extracting...';
+
+            // Extract the 'list=' parameter from the URL
+            let playlistId = urlInput.trim();
+            if (urlInput.includes('list=')) {
+                const urlParams = new URLSearchParams(urlInput.split('?')[1]);
+                playlistId = urlParams.get('list');
+            }
+
+            if (!playlistId) {
+                status.innerText = 'Error: Invalid URL or missing Playlist ID.';
+                return;
+            }
+
+            if (API_KEY === 'YOUR_YOUTUBE_API_KEY_HERE') {
+                status.innerText = 'Error: Please add your YouTube API Key inside the HTML file.';
+                return;
+            }
+
+            let links = [];
+            let nextPageToken = '';
+            let url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${API_KEY}`;
+
+            try {
+                // Loop to handle playlists larger than 50 videos
+                do {
+                    const fetchUrl = nextPageToken ? `${url}&pageToken=${nextPageToken}` : url;
+                    const response = await fetch(fetchUrl);
+                    const data = await response.json();
+
+                    if (data.error) {
+                        status.innerText = `API Error: ${data.error.message}`;
+                        return;
+                    }
+
+                    data.items.forEach(item => {
+                        const videoId = item.snippet.resourceId.videoId;
+                        links.push(`https://www.youtube.com/watch?v=${videoId}`);
+                    });
+
+                    nextPageToken = data.nextPageToken;
+                } while (nextPageToken);
+
+                output.value = links.join('\n');
+                status.innerText = `✅ Successfully extracted ${links.length} links.`;
+            } catch (error) {
+                status.innerText = `Error: ${error.message}`;
+            }
+        }
+
+        function copyLinks() {
+            const output = document.getElementById('output');
+            if(!output.value) return;
+            
+            output.select();
+            document.execCommand('copy');
+            document.getElementById('status').innerText = '📋 Copied to clipboard! Ready to paste into NotebookLM.';
+        }
+    </script>
+</body>
+</html>
