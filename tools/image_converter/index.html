@@ -12,37 +12,44 @@
     <a href="../../" class="back-link">← Back to Tools Collection</a>
 
     <div class="card">
-        <h1>Image Format Converter & Editor</h1>
-        <p class="subtitle">Securely convert, crop, and filter images right in your browser. Supports Apple/Samsung HEIC.</p>
+        <header class="app-header">
+            <h1>Image Format Converter & Pro Editor</h1>
+            <p class="subtitle">Convert, crop, rotate, filter, and watermark. 100% secure client-side processing.</p>
+        </header>
 
         <div class="upload-area" id="dropZone">
-            <div id="uploadIcon" style="font-size: 2rem; margin-bottom: 10px;">📥</div>
-            <span id="uploadText">Drag & Drop or Click to Upload</span>
+            <div id="uploadIcon" style="font-size: 2.5rem; margin-bottom: 10px;">📥</div>
+            <span id="uploadText">Drag & Drop an image here to open workspace</span>
             <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp, image/heic, image/heif, .heic, .heif">
         </div>
 
         <div id="workspace" class="workspace hidden">
             
-            <div class="preview-container">
-                <img id="preview" alt="Image preview">
+            <div class="preview-column">
+                <div class="preview-container">
+                    <img id="preview" alt="Image preview">
+                </div>
+                
+                <div id="cropControls" class="crop-controls hidden">
+                    <button id="cancelCropBtn" class="secondary-btn">Cancel</button>
+                    <button id="rotateBtn" class="secondary-btn">↻ Rotate 90°</button>
+                    <button id="applyCropBtn">Apply Changes</button>
+                </div>
             </div>
 
-            <div id="cropControls" class="crop-controls hidden">
-                <button id="cancelCropBtn" class="secondary-btn">Cancel Crop</button>
-                <button id="applyCropBtn">Apply Crop</button>
-            </div>
-
-            <div id="mainControls" class="main-controls">
+            <div class="controls-sidebar" id="mainControls">
                 
                 <div class="details-box" id="detailsBox">
                     <div class="detail-item"><strong>Format:</strong> <span id="detectedFormat">-</span></div>
                     <div class="detail-item"><strong>Size:</strong> <span id="fileSize">-</span></div>
                 </div>
 
-                <div class="effects-box" id="effectsBox">
+                <button id="cropBtn" class="tool-btn">◩ Crop & Rotate</button>
+
+                <div class="effects-box">
                     <div class="effects-header">
-                        <strong>Image Effects</strong>
-                        <button id="resetEffectsBtn" class="text-btn">Reset All</button>
+                        <strong>Visual Effects</strong>
+                        <button id="resetEffectsBtn" class="text-btn">Reset</button>
                     </div>
                     <div class="slider-group">
                         <label>Brightness: <span id="brightVal">100%</span></label>
@@ -62,9 +69,20 @@
                     </div>
                 </div>
 
-                <div class="controls-group" id="controlsGroup">
+                <div class="effects-box">
+                    <div class="effects-header"><strong>Text Watermark</strong></div>
                     <div class="control-row">
-                        <label>Convert to:</label>
+                        <input type="text" id="watermarkText" placeholder="Your text here..." style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                    </div>
+                    <div class="control-row" style="margin-top: 10px; margin-bottom: 0;">
+                        <label>Color:</label>
+                        <input type="color" id="watermarkColor" value="#ffffff" style="cursor: pointer; border: none; background: none; width: 40px; height: 30px;">
+                    </div>
+                </div>
+
+                <div class="controls-group">
+                    <div class="control-row">
+                        <label>Export as:</label>
                         <select id="outputFormat">
                             <option value="image/jpeg">JPEG</option>
                             <option value="image/png">PNG</option>
@@ -77,14 +95,10 @@
                     </div>
                 </div>
 
-                <div class="action-row">
-                    <button id="cropBtn" class="secondary-btn" disabled>Crop Image</button>
-                    <button id="convertBtn">
-                        <span class="spinner" id="spinner"></span>
-                        <span id="btnText">Download</span>
-                    </button>
-                </div>
-
+                <button id="convertBtn" class="download-btn">
+                    <span class="spinner" id="spinner"></span>
+                    <span id="btnText">Download Final Image</span>
+                </button>
             </div>
         </div>
     </div>
