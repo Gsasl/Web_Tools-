@@ -7,6 +7,7 @@ const uploadText = document.getElementById('uploadText');
 const uploadIcon = document.getElementById('uploadIcon');
 const workspace = document.getElementById('workspace');
 const preview = document.getElementById('preview');
+const mainRotateBtn = document.getElementById('mainRotateBtn');
 
 const detectedFormat = document.getElementById('detectedFormat');
 const fileCount = document.getElementById('fileCount'); 
@@ -243,6 +244,13 @@ async function handleFiles(files) {
         console.error("Upload Error:", err);
         alert("An error occurred during upload. Check console for details.");
     }
+    if(cropBtn) {
+            cropBtn.disabled = currentFiles.length > 1; 
+            cropBtn.innerText = currentFiles.length > 1 ? "Disabled in Batch" : "◩ Crop";
+        }
+        if(mainRotateBtn) {
+            mainRotateBtn.disabled = currentFiles.length > 1;
+        }
 }
 // ==========================================
 // 4. EFFECTS ENGINE
@@ -287,6 +295,39 @@ if(cropBtn) cropBtn.addEventListener('click', startCrop);
 if(cancelCropBtn) cancelCropBtn.addEventListener('click', cancelCrop);
 if(applyCropBtn) applyCropBtn.addEventListener('click', applyCrop);
 if(rotateBtn) rotateBtn.addEventListener('click', () => { if (cropper) cropper.rotate(90); });
+// ==========================================
+// STANDALONE MAIN MENU ROTATE
+// ==========================================
+if(mainRotateBtn) {
+    mainRotateBtn.addEventListener('click', () => {
+        if (currentFiles.length !== 1 || isCropping) return;
+        
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Swap width and height for a 90-degree rotation
+            canvas.width = img.naturalHeight;
+            canvas.height = img.naturalWidth;
+            
+            // Mathematically rotate the canvas matrix
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate(90 * Math.PI / 180);
+            ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+            
+            // Save the newly rotated image back into the app state
+            canvas.toBlob((blob) => {
+                const newFile = new File([blob], currentFiles[0].name, { type: currentFiles[0].type });
+                currentFiles[0] = newFile;
+                originalPreviewSrc = URL.createObjectURL(newFile);
+                preview.src = originalPreviewSrc;
+                applyEffects(); // Re-apply visual filters to the new rotation
+            }, currentFiles[0].type);
+        };
+        img.src = URL.createObjectURL(currentFiles[0]);
+    });
+}
 
 function startCrop() {
     if (currentFiles.length !== 1 || isCropping) return;
