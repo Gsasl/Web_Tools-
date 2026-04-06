@@ -1,6 +1,9 @@
 :root {
     --primary: #2563eb;
     --primary-hover: #1d4ed8;
+    --success: #16a34a; /* New color for success/apply action */
+    --success-hover: #15803d;
+    --danger: #ef4444; /* New color for cancel/danger action */
     --bg: #f8fafc;
     --surface: #ffffff;
     --text-main: #0f172a;
@@ -17,6 +20,7 @@ body {
     padding: 20px; 
 }
 
+/* Back Link (add to all tools style sheets) */
 .back-link {
     display: inline-block;
     margin-bottom: 20px;
@@ -72,14 +76,41 @@ h1 { font-size: 1.5rem; margin-top: 0; margin-bottom: 5px; }
     margin-top: 0;
 }
 
-.preview-container { text-align: center; margin-bottom: 20px; }
+.preview-container { 
+    text-align: center; 
+    margin-bottom: 20px; 
+    overflow: hidden; /* Prevent cropper overflowing */
+    position: relative;
+    border-radius: 8px;
+    min-height: 100px; /* Give a base height when no image */
+}
 #preview {
     max-width: 100%;
     max-height: 250px;
     border-radius: 8px;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
     object-fit: contain;
 }
+
+/* --- Separate Cropper Controls Styling Section --- */
+.crop-controls {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    opacity: 1;
+    transition: opacity 0.3s;
+}
+.crop-controls.hidden { display: none; opacity: 0; pointer-events: none; }
+
+#applyCropBtn { background: var(--success); }
+#applyCropBtn:hover { background: var(--success-hover); }
+
+#cancelCropBtn { background: var(--text-muted); color: white;}
+#cancelCropBtn:hover { background: #475569; }
+/* --- End Cropper Controls Styling Section --- */
+
+.main-controls { transition: opacity 0.3s; }
+.main-controls.hidden { display: none; opacity: 0; pointer-events: none; }
 
 .details-box {
     background: var(--bg);
@@ -99,9 +130,10 @@ select { padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-
 select:focus { border-color: var(--primary); }
 input[type="range"] { width: 50%; cursor: pointer; accent-color: var(--primary); }
 
-.badge { background: #e2e8f0; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
+.badge { background: #e2e8f0; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; transition: background 0.2s; }
 
-/* Button & Spinner */
+/* Buttons & Spinner */
+.action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; } /* Crop & Download buttons side-by-side */
 button { 
     width: 100%;
     background: var(--primary); 
@@ -121,6 +153,11 @@ button {
 }
 button:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); }
 button:disabled { background: #94a3b8; cursor: not-allowed; box-shadow: none; transform: none; }
+
+.secondary-btn { background: #e2e8f0; color: #475569; box-shadow: none; font-weight: 500;}
+.secondary-btn:hover:not(:disabled) { background: #cbd5e1; }
+/* Specialized style when a secondary button is disabled (like crop before upload) */
+.secondary-btn:disabled { color: #94a3b8; }
 
 .spinner {
     display: none;
