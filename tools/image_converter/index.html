@@ -14,7 +14,7 @@
     <div class="card">
         <header class="app-header">
             <h1>Image Format Converter & Pro Editor</h1>
-            <p class="subtitle">Convert, crop, filter, and batch-process. 100% secure client-side processing.</p>
+            <p class="subtitle">Convert, crop, filter, watermark, and batch-process. 100% secure client-side processing.</p>
         </header>
 
         <div class="upload-area" id="dropZone">
@@ -51,10 +51,10 @@
                     <div class="control-row" style="margin-bottom: 10px;">
                         <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
                             <input type="checkbox" id="stripExif" checked> 
-                            🛡️ Strip Privacy Data (EXIF/GPS)
+                            🛡️ Strip Privacy Data (EXIF)
                         </label>
                     </div>
-                    <button id="aiBgBtn" class="secondary-btn" style="width: 100%; font-size: 0.9rem;">✨ AI Background Removal (Beta)</button>
+                    <button id="aiBgBtn" class="secondary-btn" style="width: 100%; font-size: 0.9rem;">✨ AI Background Removal</button>
                 </div>
 
                 <div class="effects-box">
@@ -71,8 +71,23 @@
                         <input type="range" id="contrastSlider" min="0" max="200" value="100">
                     </div>
                     <div class="slider-group">
+                        <label>Grayscale: <span id="grayVal">0%</span></label>
+                        <input type="range" id="graySlider" min="0" max="100" value="0">
+                    </div>
+                    <div class="slider-group">
                         <label>Blur: <span id="blurVal">0px</span></label>
                         <input type="range" id="blurSlider" min="0" max="10" step="0.5" value="0">
+                    </div>
+                </div>
+
+                <div class="effects-box">
+                    <div class="effects-header"><strong>Text Watermark</strong></div>
+                    <div class="control-row">
+                        <input type="text" id="watermarkText" placeholder="Your text here..." style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                    </div>
+                    <div class="control-row" style="margin-top: 10px; margin-bottom: 0;">
+                        <label>Color:</label>
+                        <input type="color" id="watermarkColor" value="#ffffff" style="cursor: pointer; border: none; background: none; width: 40px; height: 30px;">
                     </div>
                 </div>
 
