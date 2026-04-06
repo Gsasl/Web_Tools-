@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instant Image Converter & Editor</title>
+    <title>Instant Image Converter & Pro Editor</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="cropper/cropper.css">
 </head>
@@ -14,13 +14,13 @@
     <div class="card">
         <header class="app-header">
             <h1>Image Format Converter & Pro Editor</h1>
-            <p class="subtitle">Convert, crop, rotate, filter, and watermark. 100% secure client-side processing.</p>
+            <p class="subtitle">Convert, crop, filter, and batch-process. 100% secure client-side processing.</p>
         </header>
 
         <div class="upload-area" id="dropZone">
             <div id="uploadIcon" style="font-size: 2.5rem; margin-bottom: 10px;">📥</div>
-            <span id="uploadText">Drag & Drop an image here to open workspace</span>
-            <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp, image/heic, image/heif, .heic, .heif">
+            <span id="uploadText">Drag & Drop images here (Supports Batch Upload)</span>
+            <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp, image/heic, image/heif, .heic, .heif" multiple>
         </div>
 
         <div id="workspace" class="workspace hidden">
@@ -41,10 +41,21 @@
                 
                 <div class="details-box" id="detailsBox">
                     <div class="detail-item"><strong>Format:</strong> <span id="detectedFormat">-</span></div>
-                    <div class="detail-item"><strong>Size:</strong> <span id="fileSize">-</span></div>
+                    <div class="detail-item"><strong>Files:</strong> <span id="fileCount">1</span></div>
                 </div>
 
                 <button id="cropBtn" class="tool-btn">◩ Crop & Rotate</button>
+
+                <div class="effects-box">
+                    <div class="effects-header"><strong>Pro Features</strong></div>
+                    <div class="control-row" style="margin-bottom: 10px;">
+                        <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="stripExif" checked> 
+                            🛡️ Strip Privacy Data (EXIF/GPS)
+                        </label>
+                    </div>
+                    <button id="aiBgBtn" class="secondary-btn" style="width: 100%; font-size: 0.9rem;">✨ AI Background Removal (Beta)</button>
+                </div>
 
                 <div class="effects-box">
                     <div class="effects-header">
@@ -60,23 +71,8 @@
                         <input type="range" id="contrastSlider" min="0" max="200" value="100">
                     </div>
                     <div class="slider-group">
-                        <label>Grayscale: <span id="grayVal">0%</span></label>
-                        <input type="range" id="graySlider" min="0" max="100" value="0">
-                    </div>
-                    <div class="slider-group">
                         <label>Blur: <span id="blurVal">0px</span></label>
                         <input type="range" id="blurSlider" min="0" max="10" step="0.5" value="0">
-                    </div>
-                </div>
-
-                <div class="effects-box">
-                    <div class="effects-header"><strong>Text Watermark</strong></div>
-                    <div class="control-row">
-                        <input type="text" id="watermarkText" placeholder="Your text here..." style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1;">
-                    </div>
-                    <div class="control-row" style="margin-top: 10px; margin-bottom: 0;">
-                        <label>Color:</label>
-                        <input type="color" id="watermarkColor" value="#ffffff" style="cursor: pointer; border: none; background: none; width: 40px; height: 30px;">
                     </div>
                 </div>
 
@@ -97,13 +93,14 @@
 
                 <button id="convertBtn" class="download-btn">
                     <span class="spinner" id="spinner"></span>
-                    <span id="btnText">Download Final Image</span>
+                    <span id="btnText">Download Image(s)</span>
                 </button>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="cropper/cropper.js"></script>
     <script src="script.js"></script>
 </body>
