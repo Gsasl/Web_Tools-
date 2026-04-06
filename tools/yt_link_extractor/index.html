@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minimal Playlist Extractor</title>
+    <title>NotebookLM Playlist Extractor</title>
     <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
@@ -12,7 +15,7 @@
 
     <div class="card">
         <h1>NotebookLM Playlist Extractor</h1>
-        <p class="subtitle">Extract clean links for NotebookLM sources instantly.</p>
+        <p class="subtitle">Extract clean links, durations, and export to PDF instantly.</p>
 
         <div class="input-group">
             <input type="text" id="playlistUrl" placeholder="https://www.youtube.com/playlist?list=..." autocomplete="off"/>
@@ -21,11 +24,37 @@
                 <span id="btnText">Extract</span>
             </button>
         </div>
+
+        <div class="options-panel">
+            <label class="toggle-row">
+                <input type="checkbox" id="extractDetailsToggle">
+                <span><strong>Extract Rich Details</strong> (Shows Title, Length, and Link in a Table)</span>
+            </label>
+            <label class="toggle-row">
+                <input type="checkbox" id="downloadPdfToggle">
+                <span><strong>Download PDF</strong> (Auto-saves the table as a PDF document)</span>
+            </label>
+        </div>
         
         <div id="status" class="status-msg"></div>
 
-        <div class="textarea-wrapper">
+        <div class="textarea-wrapper" id="rawOutputWrapper">
             <textarea id="output" placeholder="Video links will appear here..." readonly></textarea>
+        </div>
+
+        <div class="table-container hidden" id="tableContainer">
+            <table id="detailsTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Title</th>
+                        <th>Length</th>
+                        <th>Link</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    </tbody>
+            </table>
         </div>
         
         <button id="copyBtn" class="secondary-btn" onclick="copyLinks()" disabled>📋 Copy All Links</button>
