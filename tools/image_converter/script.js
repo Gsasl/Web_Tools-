@@ -84,51 +84,67 @@ async function handleFiles(files) {
         resetEffects();
         currentFiles = []; 
 
-        uploadIcon.innerText = "⏳";
-        uploadText.innerText = `Processing ${files.length} file(s)...`;
+        if(uploadIcon) uploadIcon.innerText = "⏳";
+        if(uploadText) uploadText.innerText = `Processing ${files.length} file(s)...`;
 
         for (let i = 0; i < files.length; i++) {
             let fileToProcess = files[i];
             const fileName = fileToProcess.name.toLowerCase();
 
+            // 1. Check for HEIC
             if (fileName.endsWith('.heic') || fileName.endsWith('.heif')) {
                 try {
                     const jpegBlob = await heic2any({ blob: fileToProcess, toType: "image/jpeg", quality: 0.9 });
                     const newName = fileToProcess.name.replace(/\.[^/.]+$/, ".jpg");
                     fileToProcess = new File([jpegBlob], newName, { type: "image/jpeg" });
+                    currentFiles.push(fileToProcess);
                 } catch (error) {
                     console.error("Could not decode HEIC:", fileName);
-                    continue; 
                 }
+            } 
+            // 2. ONLY accept standard images, skip everything else
+            else if (fileToProcess.type && fileToProcess.type.startsWith('image/')) {
+                currentFiles.push(fileToProcess);
+            } else {
+                console.warn("Skipped invalid or unreadable file:", fileName);
             }
-            currentFiles.push(fileToProcess);
         }
 
         if (currentFiles.length === 0) {
-            alert("No valid images processed.");
-            uploadIcon.innerText = "📥";
-            uploadText.innerText = "Drag & Drop images here (Supports Batch Upload)";
+            alert("No valid images were found in your upload.");
+            if(uploadIcon) uploadIcon.innerText = "📥";
+            if(uploadText) uploadText.innerText = "Drag & Drop images here (Supports Batch Upload)";
             return;
         }
 
         // Processing complete - reveal workspace
-        dropZone.style.display = 'none';
-        workspace.classList.remove('hidden');
+        if(dropZone) dropZone.style.display = 'none';
+        if(workspace) workspace.classList.remove('hidden');
 
         // Safely update UI
         if(fileCount) fileCount.innerText = currentFiles.length;
+        
+        // BULLETPROOF Format Text generator
         if(detectedFormat) {
-            const formatStr = currentFiles[0].type ? currentFiles[0].type.split('/')[1].toUpperCase() : 'UNKNOWN';
+            let formatStr = 'UNKNOWN';
+            // Only attempt to split if it actually has a format string with a slash
+            if (currentFiles[0].type && currentFiles[0].type.includes('/')) {
+                formatStr = currentFiles[0].type.split('/')[1].toUpperCase();
+            }
             detectedFormat.innerText = currentFiles.length > 1 ? `Batch (${formatStr})` : formatStr;
         }
 
-        preview.src = URL.createObjectURL(currentFiles[0]);
-        originalPreviewSrc = preview.src; 
+        if(preview) {
+            preview.src = URL.createObjectURL(currentFiles[0]);
+            originalPreviewSrc = preview.src; 
+        }
         
-        convertBtn.disabled = false;
+        if(convertBtn) convertBtn.disabled = false;
         
-        cropBtn.disabled = currentFiles.length > 1; 
-        cropBtn.innerText = currentFiles.length > 1 ? "Crop (Disabled in Batch)" : "◩ Crop & Rotate";
+        if(cropBtn) {
+            cropBtn.disabled = currentFiles.length > 1; 
+            cropBtn.innerText = currentFiles.length > 1 ? "Crop (Disabled in Batch)" : "◩ Crop & Rotate";
+        }
 
         updateQualityUI();
     } catch (err) {
@@ -136,7 +152,6 @@ async function handleFiles(files) {
         alert("An error occurred during upload. Check console for details.");
     }
 }
-
 // ==========================================
 // 4. EFFECTS ENGINE
 // ==========================================
@@ -146,7 +161,12 @@ filters.forEach(slider => {
 });
 
 function getFilterString() {
-    return `brightness(${brightSlider.value}%) contrast(${contrastSlider.value}%) grayscale(${graySlider.value}%) blur(${blurSlider.value}px)`;
+    // Bulletproof fallbacks in case HTML is ever missing the sliders
+    const b = brightSlider ? brightSlider.value : 100;
+    const c = contrastSlider ? contrastSlider.value : 100;
+    const g = graySlider ? graySlider.value : 0;
+    const bl = blurSlider ? blurSlider.value : 0;
+    return `brightness(${b}%) contrast(${c}%) grayscale(${g}%) blur(${bl}px)`;
 }
 
 function applyEffects() {
