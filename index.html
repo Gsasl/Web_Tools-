@@ -1,12 +1,116 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>My Web Tools</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Web Tools Collection</title>
+    <style>
+        /* Base Variables & Reset */
+        :root {
+            --primary: #2563eb;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+        }
+        
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            line-height: 1.6;
+        }
+
+        /* Header Section */
+        header {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto 50px auto;
+        }
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            letter-spacing: -0.02em;
+        }
+        header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        /* Tool Grid Layout */
+        .tools-grid {
+            display: grid;
+            /* Auto-fit creates columns automatically based on screen size */
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        /* Individual Tool Cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Hover Animation */
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary);
+        }
+
+        /* Card Content Styling */
+        .card-icon {
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+        .card h2 {
+            margin: 0 0 10px 0;
+            font-size: 1.25rem;
+            color: var(--primary);
+        }
+        .card p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            flex-grow: 1; /* Pushes any footer/tags to the bottom */
+        }
+    </style>
 </head>
 <body>
-    <h1>Welcome to My Web Tools</h1>
-    <ul>
-        <li><a href="./tools/yt_link_extractor/">YouTube Playlist Link Extractor</a></li>
-    </ul>
+
+    <header>
+        <h1>My Web Tools</h1>
+        <p>A collection of handy, client-side utilities built for daily productivity.</p>
+    </header>
+
+    <main class="tools-grid">
+        
+        <a href="./tools/yt_link_extractor/" class="card">
+            <div class="card-icon">📺</div>
+            <h2>YouTube Link Extractor</h2>
+            <p>Paste a YouTube playlist URL to instantly extract all video links. Perfect for bulk copying into NotebookLM.</p>
+        </a>
+
+        <a href="./tools/image_converter/" class="card">
+            <div class="card-icon">🖼️</div>
+            <h2>Image Format Converter</h2>
+            <p>Securely convert images between PNG, JPEG, and WebP formats with adjustable compression right in your browser.</p>
+        </a>
+
+        </main>
+
 </body>
 </html>
