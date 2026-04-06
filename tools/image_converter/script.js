@@ -48,12 +48,100 @@ let isCropping = false;
 // ==========================================
 // 2. STUB FEATURES
 // ==========================================
-if(aiBgBtn) {
+let aiWorker = null;
+
+if (aiBgBtn) {
     aiBgBtn.addEventListener('click', () => {
-        alert("AI Background Removal requires loading a local WebAssembly ML model. This feature is in development for V2!");
+        if (currentFiles.length !== 1 || isCropping) return;
+
+        // Disable UI during processing
+        aiBgBtn.disabled = true;
+        const originalBtnText = aiBgBtn.innerHTML;
+        aiBgBtn.innerHTML = '<span class="spinner" style="display:inline-block; border-color:#0f172a; border-top-color:transparent;"></span> Initializing AI...';
+        convertBtn.disabled = true;
+
+        // Initialize Web Worker if it doesn't exist
+        if (!aiWorker) {
+            aiWorker = new Worker('worker.js', { type: 'module' });
+        }
+
+        // Listen for messages coming back from the background worker
+        aiWorker.onmessage = (e) => {
+            const response = e.data;
+
+            if (response.status === 'loading' || response.status === 'processing') {
+                aiBgBtn.innerHTML = `<span class="spinner" style="display:inline-block; border-color:#0f172a; border-top-color:transparent;"></span> ${response.message}`;
+            } 
+            else if (response.status === 'done') {
+                // The AI returned the raw pixels of the mask. Let's apply it!
+                applyAIMask(response);
+            } 
+            else if (response.status === 'error') {
+                alert("AI Error: " + response.error);
+                resetAIBtn(originalBtnText);
+            }
+        };
+
+        // Convert current image to base64 and send it to the worker
+        const reader = new FileReader();
+        reader.readAsDataURL(currentFiles[0]);
+        reader.onload = () => {
+            aiWorker.postMessage({ imageBase64: reader.result });
+        };
     });
 }
 
+// Function to composite the AI mask over the original image
+function applyAIMask(aiData) {
+    const originalImg = new Image();
+    originalImg.src = URL.createObjectURL(currentFiles[0]);
+
+    originalImg.onload = () => {
+        // 1. Rebuild the AI mask into an actual Canvas Image Data object
+        const maskImageData = new ImageData(new Uint8ClampedArray(aiData.data), aiData.width, aiData.height);
+        const maskCanvas = document.createElement('canvas');
+        maskCanvas.width = aiData.width;
+        maskCanvas.height = aiData.height;
+        maskCanvas.getContext('2d').putImageData(maskImageData, 0, 0);
+
+        // 2. Create the final composite canvas
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = originalImg.naturalWidth;
+        finalCanvas.height = originalImg.naturalHeight;
+        const ctx = finalCanvas.getContext('2d');
+
+        // Draw original image
+        ctx.drawImage(originalImg, 0, 0);
+
+        // This specific blend mode keeps ONLY the pixels where the mask overlaps
+        ctx.globalCompositeOperation = 'destination-in';
+        ctx.drawImage(maskCanvas, 0, 0, finalCanvas.width, finalCanvas.height);
+
+        // 3. Export as PNG (Must be PNG to support transparency)
+        finalCanvas.toBlob((blob) => {
+            const newName = currentFiles[0].name.replace(/\.[^/.]+$/, "-nobg.png");
+            const newFile = new File([blob], newName, { type: 'image/png' });
+            
+            // Update app state
+            currentFiles[0] = newFile;
+            originalPreviewSrc = URL.createObjectURL(newFile);
+            preview.src = originalPreviewSrc;
+            
+            // Force output format dropdown to PNG to preserve transparency
+            if(outputFormat) outputFormat.value = 'image/png';
+            updateQualityUI();
+
+            resetAIBtn("✨ AI Background Removed!");
+            setTimeout(() => resetAIBtn("✨ AI Background Removal"), 3000);
+        }, 'image/png');
+    };
+}
+
+function resetAIBtn(text) {
+    aiBgBtn.innerHTML = text;
+    aiBgBtn.disabled = false;
+    convertBtn.disabled = false;
+}
 // ==========================================
 // 3. UPLOAD LOGIC
 // ==========================================
@@ -115,6 +203,10 @@ async function handleFiles(files) {
             if(uploadIcon) uploadIcon.innerText = "📥";
             if(uploadText) uploadText.innerText = "Drag & Drop images here (Supports Batch Upload)";
             return;
+        }
+        if(aiBgBtn) {
+            aiBgBtn.disabled = currentFiles.length > 1;
+            aiBgBtn.innerText = currentFiles.length > 1 ? "AI BG Removal (Disabled in Batch)" : "✨ AI Background Removal";
         }
 
         // Processing complete - reveal workspace
