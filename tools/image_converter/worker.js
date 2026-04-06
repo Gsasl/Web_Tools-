@@ -1,5 +1,6 @@
 // worker.js - Runs the Machine Learning Model on a separate background thread
-import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+// FIXED: Upgraded to V3 (@huggingface/transformers) to natively support RMBG-1.4
+import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers';
 
 env.allowLocalModels = false;
 let segmenter = null;
@@ -10,12 +11,13 @@ self.onmessage = async (event) => {
     try {
         if (!segmenter) {
             self.postMessage({ status: 'loading', message: 'Downloading AI Model (~40MB)... This only happens once.' });
-            // FIXED: Using the Web-Optimized ONNX port instead of the Python model
-            segmenter = await pipeline('image-segmentation', 'Xenova/bria-rmbg-1.4');
+            // Using the official, correct model name
+            segmenter = await pipeline('image-segmentation', 'briaai/RMBG-1.4');
         }
 
         self.postMessage({ status: 'processing', message: 'AI is isolating the subject...' });
         const result = await segmenter(imageBase64);
+        
         const mask = result[0].mask;
 
         self.postMessage({ 
