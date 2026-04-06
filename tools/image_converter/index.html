@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Instant Image Converter</title>
+    <title>Instant Image Converter & Editor</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="cropper/cropper.css">
 </head>
 <body>
 
-    <a href="../../" class="back-link">← Back to Tools</a>
+    <a href="../../" class="back-link">← Back to Tools Collection</a>
 
     <div class="card">
-        <h1>Image Format Converter</h1>
-        <p class="subtitle">Securely convert images right in your browser. Supports Apple/Samsung HEIC.</p>
+        <h1>Image Format Converter & Editor</h1>
+        <p class="subtitle">Securely convert & crop images right in your browser. Supports Apple/Samsung HEIC.</p>
 
         <div class="upload-area" id="dropZone">
             <div id="uploadIcon" style="font-size: 2rem; margin-bottom: 10px;">📥</div>
@@ -25,35 +26,47 @@
                 <img id="preview" alt="Image preview">
             </div>
 
-            <div class="details-box" id="detailsBox">
-                <div class="detail-item"><strong>Format:</strong> <span id="detectedFormat">-</span></div>
-                <div class="detail-item"><strong>Size:</strong> <span id="fileSize">-</span></div>
+            <div id="cropControls" class="crop-controls hidden">
+                <button id="cancelCropBtn" class="secondary-btn">Cancel Crop</button>
+                <button id="applyCropBtn">Apply Crop</button>
             </div>
-
-            <div class="controls-group" id="controlsGroup">
-                <div class="control-row">
-                    <label>Convert to:</label>
-                    <select id="outputFormat">
-                        <option value="image/jpeg">JPEG</option>
-                        <option value="image/png">PNG</option>
-                        <option value="image/webp">WebP</option>
-                    </select>
+            <div id="mainControls" class="main-controls">
+                <div class="details-box" id="detailsBox">
+                    <div class="detail-item"><strong>Format:</strong> <span id="detectedFormat">-</span></div>
+                    <div class="detail-item"><strong>Size:</strong> <span id="fileSize">-</span></div>
                 </div>
-                
-                <div class="control-row">
-                    <label>Quality: <span id="qualityValue" class="badge">90%</span></label>
-                    <input type="range" id="qualitySlider" min="0.1" max="1" step="0.1" value="0.9">
+
+                <div class="controls-group" id="controlsGroup">
+                    <div class="control-row">
+                        <label>Convert to:</label>
+                        <select id="outputFormat">
+                            <option value="image/jpeg">JPEG</option>
+                            <option value="image/png">PNG</option>
+                            <option value="image/webp">WebP</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-row">
+                        <label>Quality: <span id="qualityValue" class="badge">90%</span></label>
+                        <input type="range" id="qualitySlider" min="0.1" max="1" step="0.1" value="0.9">
+                    </div>
+                </div>
+
+                <div class="action-row">
+                    <button id="cropBtn" class="secondary-btn" disabled>Crop/Edit</button>
+                    <button id="convertBtn">
+                        <span class="spinner" id="spinner"></span>
+                        <span id="btnText">Download</span>
+                    </button>
                 </div>
             </div>
-
-            <button id="convertBtn">
-                <span class="spinner" id="spinner"></span>
-                <span id="btnText">Download Converted Image</span>
-            </button>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+    
+    <script src="cropper/cropper.js"></script>
+    
     <script src="script.js"></script>
 </body>
 </html>
