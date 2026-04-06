@@ -1,11 +1,11 @@
 const fileInput = document.getElementById('fileInput');
 const dropZone = document.getElementById('dropZone');
 const uploadText = document.getElementById('uploadText');
+const uploadIcon = document.getElementById('uploadIcon');
+const workspace = document.getElementById('workspace');
 const preview = document.getElementById('preview');
-const detailsBox = document.getElementById('detailsBox');
 const detectedFormat = document.getElementById('detectedFormat');
 const fileSize = document.getElementById('fileSize');
-const controlsGroup = document.getElementById('controlsGroup');
 const outputFormat = document.getElementById('outputFormat');
 const qualitySlider = document.getElementById('qualitySlider');
 const qualityValue = document.getElementById('qualityValue');
@@ -15,7 +15,7 @@ const spinner = document.getElementById('spinner');
 
 let currentFile = null;
 
-// --- Drag and Drop Logic ---
+// --- Drag and Drop Events ---
 dropZone.addEventListener('click', () => fileInput.click());
 
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -37,38 +37,68 @@ function preventDefaults(e) {
 
 dropZone.addEventListener('drop', (e) => {
     const dt = e.dataTransfer;
-    const files = dt.files;
-    if(files.length) handleFile(files[0]);
+    if(dt.files.length) handleFile(dt.files[0]);
 });
 
 fileInput.addEventListener('change', function(e) {
     if(e.target.files.length) handleFile(e.target.files[0]);
 });
 
-// --- File Handling & UI Updates ---
-function handleFile(file) {
-    if (!file.type.startsWith('image/')) {
-        alert('Please upload an image file.');
+// --- Main File Handler (Includes HEIC Decoder) ---
+async function handleFile(file) {
+    let fileToProcess = file;
+    const fileName = file.name.toLowerCase();
+
+    // Reset workspace to hidden if uploading a second file
+    workspace.classList.add('hidden');
+
+    // HEIC Intercept
+    if (fileName.endsWith('.heic') || fileName.endsWith('.heif')) {
+        uploadIcon.innerText = "⏳";
+        uploadText.innerText = "Decoding HEIC format... please wait.";
+        
+        try {
+            const jpegBlob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
+            const newName = file.name.replace(/\.[^/.]+$/, ".jpg");
+            // Cast the decoded blob back into a standard File object
+            fileToProcess = new File([jpegBlob], newName, { type: "image/jpeg" });
+        } catch (error) {
+            alert("Could not decode this HEIC file.");
+            resetUploadArea();
+            return;
+        }
+    } else if (!file.type.startsWith('image/')) {
+        alert('Please upload a valid image file.');
+        resetUploadArea();
         return;
     }
 
-    currentFile = file;
+    currentFile = fileToProcess;
     
-    uploadText.innerText = `✅ ${file.name}`;
-    detailsBox.style.display = 'block';
-    controlsGroup.style.display = 'block';
+    // Update UI Elements
+    uploadIcon.innerText = "✅";
+    uploadText.innerText = fileToProcess.name;
     
-    const formatStr = file.type.split('/')[1].toUpperCase();
+    const formatStr = fileToProcess.type ? fileToProcess.type.split('/')[1].toUpperCase() : 'UNKNOWN';
     detectedFormat.innerText = formatStr;
     
-    const sizeKB = (file.size / 1024).toFixed(2);
+    const sizeKB = (fileToProcess.size / 1024).toFixed(2);
     fileSize.innerText = `${sizeKB} KB`;
 
-    preview.src = URL.createObjectURL(file);
-    preview.style.display = 'block';
+    preview.src = URL.createObjectURL(fileToProcess);
+    
+    // Smooth fade in
+    setTimeout(() => {
+        workspace.classList.remove('hidden');
+        workspace.style.height = 'auto'; 
+    }, 150);
 
-    convertBtn.disabled = false;
     updateQualityUI();
+}
+
+function resetUploadArea() {
+    uploadIcon.innerText = "📥";
+    uploadText.innerText = "Drag & Drop or Click to Upload";
 }
 
 // --- Quality Slider Logic ---
@@ -78,23 +108,28 @@ qualitySlider.addEventListener('input', updateQualityUI);
 function updateQualityUI() {
     if(outputFormat.value === 'image/png') {
         qualitySlider.disabled = true;
-        qualityValue.innerText = 'N/A (Lossless)';
+        qualitySlider.style.opacity = '0.5';
+        qualityValue.innerText = 'Lossless';
+        qualityValue.style.background = '#e2e8f0';
     } else {
         qualitySlider.disabled = false;
+        qualitySlider.style.opacity = '1';
         qualityValue.innerText = Math.round(qualitySlider.value * 100) + '%';
+        qualityValue.style.background = '#dbeafe';
+        qualityValue.style.color = '#1e40af';
     }
 }
 
-// --- Conversion & Download Logic ---
+// --- Conversion Engine ---
 convertBtn.addEventListener('click', function() {
     if (!currentFile) return;
 
-    // Show loading state
+    // Trigger Loading State
     convertBtn.disabled = true;
     btnText.innerText = 'Converting...';
     spinner.style.display = 'inline-block';
 
-    // A small delay allows the browser to render the spinner before heavy processing
+    // Allow UI to breathe before locking up the main thread
     setTimeout(() => {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
@@ -104,11 +139,12 @@ convertBtn.addEventListener('click', function() {
         ctx.drawImage(preview, 0, 0);
 
         const mimeType = outputFormat.value;
-        const newExtension = mimeType.split('/')[1];
+        let newExtension = mimeType.split('/')[1];
+        if (newExtension === 'jpeg') newExtension = 'jpg';
+        
         const originalName = currentFile.name.split('.')[0];
         const newFileName = `${originalName}-converted.${newExtension}`;
         
-        // Use slider value if not PNG, otherwise ignore
         const quality = mimeType === 'image/png' ? 1 : parseFloat(qualitySlider.value);
 
         canvas.toBlob(function(blob) {
@@ -121,11 +157,11 @@ convertBtn.addEventListener('click', function() {
             document.body.removeChild(link);
             URL.revokeObjectURL(link.href);
 
-            // Reset button state
+            // Revert Loading State
             convertBtn.disabled = false;
             btnText.innerText = 'Download Converted Image';
             spinner.style.display = 'none';
 
         }, mimeType, quality);
-    }, 50); 
+    }, 100); 
 });
