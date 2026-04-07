@@ -93,7 +93,7 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
           </div>
           <h3>AI Background Removal</h3>
-          <p>Runs a local ML model in a background thread — the UI stays fully responsive.</p>
+          <p>Runs a local ML model in a Web Worker — fill with custom or passport colors.</p>
         </div>
         <div class="feat-card">
           <div class="feat-icon-wrap feat-icon-green">
@@ -104,10 +104,10 @@
         </div>
         <div class="feat-card">
           <div class="feat-icon-wrap feat-icon-rose">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 1 0 0 14.14"/></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           </div>
-          <h3>Visual Effects</h3>
-          <p>Brightness, contrast, grayscale, blur. Baked permanently into the export.</p>
+          <h3>Output Size Presets</h3>
+          <p>Passport (35×45 mm), US Visa (2×2 in), custom pixel dimensions — size takes priority.</p>
         </div>
         <div class="feat-card">
           <div class="feat-icon-wrap feat-icon-teal">
@@ -148,7 +148,7 @@
         <!-- LEFT: PREVIEW -->
         <div class="preview-col">
           <div class="preview-wrap" id="previewWrap">
-            <!-- AI processing overlay -->
+            <!-- AI overlay -->
             <div class="ai-overlay hidden" id="aiOverlay">
               <div class="ai-card">
                 <div class="ai-ring"></div>
@@ -160,6 +160,7 @@
             </div>
             <img id="preview" alt="Image preview">
           </div>
+
           <!-- Crop toolbar -->
           <div class="crop-bar hidden" id="cropBar">
             <button class="btn btn-sm btn-ghost" id="cancelCropBtn">✕ Cancel</button>
@@ -175,13 +176,22 @@
           <div class="info-bar">
             <div class="info-tags">
               <span class="tag tag-fmt" id="detectedFormat">JPEG</span>
-              <span class="tag" id="fileDimensions">–</span>
+              <!-- Clickable dims chip — opens popup -->
+              <button class="tag tag-dim-btn" id="dimTag" title="Click for file details">–</button>
               <span class="tag" id="fileCount">1 file</span>
             </div>
             <button class="info-reset" id="resetBtn" title="Upload new images">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15A9 9 0 1 0 5.64 5.64L1 10"/></svg>
               New
             </button>
+          </div>
+
+          <!-- Dimension / size popup -->
+          <div class="dim-popup hidden" id="dimPopup">
+            <div class="dim-popup-row"><span>Width</span><strong id="popW">–</strong></div>
+            <div class="dim-popup-row"><span>Height</span><strong id="popH">–</strong></div>
+            <div class="dim-popup-row"><span>File size</span><strong id="popSize">–</strong></div>
+            <div class="dim-popup-row"><span>Format</span><strong id="popFmt">–</strong></div>
           </div>
 
           <!-- Quick tools -->
@@ -200,9 +210,42 @@
             AI Background Removal
           </button>
 
-          <!-- Panels -->
+          <!-- PANELS -->
           <div class="panels">
 
+            <!-- Background Fill (shown after AI removal) -->
+            <div class="panel open" id="panelBg">
+              <button class="panel-head" data-panel="panelBg">
+                Background Fill
+                <svg class="panel-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div class="panel-body">
+                <p class="panel-hint">Applied at export. Use after AI background removal.</p>
+                <div class="bg-swatches">
+                  <button class="swatch active" data-color="transparent" id="swNone" title="None (transparent)">
+                    <span class="swatch-checker"></span>
+                  </button>
+                  <button class="swatch" data-color="#ffffff" id="swWhite" title="White"></button>
+                  <button class="swatch" data-color="#5b8bd0" id="swBlue" title="Passport blue"></button>
+                  <button class="swatch" data-color="#c8e6c9" id="swGreen" title="Light green"></button>
+                  <button class="swatch" data-color="#ffecb3" id="swYellow" title="Cream"></button>
+                  <button class="swatch" data-color="#f8bbd0" id="swPink" title="Soft pink"></button>
+                </div>
+                <div class="inline-row" style="margin-top:10px">
+                  <label class="row-label">Custom</label>
+                  <input type="color" id="bgColorPick" value="#5b8bd0" class="color-pick">
+                  <button class="btn btn-sm btn-outline" id="applyCustomBg" style="flex:1;min-width:0">Use this color</button>
+                </div>
+                <!-- Live preview swatch of current selection -->
+                <div class="bg-preview-row">
+                  <span class="row-label">Current fill:</span>
+                  <span class="bg-cur-swatch" id="bgCurSwatch"></span>
+                  <span class="row-label" id="bgCurLabel">None</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Effects -->
             <div class="panel" id="panelEffects">
               <button class="panel-head" data-panel="panelEffects">
                 Effects
@@ -229,6 +272,7 @@
               </div>
             </div>
 
+            <!-- Watermark -->
             <div class="panel" id="panelWatermark">
               <button class="panel-head" data-panel="panelWatermark">
                 Watermark
@@ -256,6 +300,7 @@
               </div>
             </div>
 
+            <!-- Privacy -->
             <div class="panel" id="panelPrivacy">
               <button class="panel-head" data-panel="panelPrivacy">
                 Privacy
@@ -270,6 +315,7 @@
               </div>
             </div>
 
+            <!-- Export -->
             <div class="panel open" id="panelExport">
               <button class="panel-head" data-panel="panelExport">
                 Export
@@ -284,9 +330,45 @@
                     <option value="image/webp">WebP</option>
                   </select>
                 </div>
-                <div class="slider-group" id="qualityRow" style="margin-top:12px;margin-bottom:0">
+                <div class="slider-group" id="qualityRow" style="margin-top:12px">
                   <div class="slider-label"><span>Quality</span><span class="sval" id="qualityValue">90%</span></div>
                   <input type="range" id="qualitySlider" min="0.1" max="1" step="0.05" value="0.9">
+                </div>
+
+                <!-- Output size preset -->
+                <div class="inline-row" style="margin-top:4px">
+                  <label class="row-label">Output size</label>
+                  <select class="field-select" id="sizePreset">
+                    <option value="original">Original</option>
+                    <optgroup label="Passport / ID">
+                      <option value="passport_eu">EU Passport (35×45 mm / 413×531 px)</option>
+                      <option value="passport_us">US Visa (2×2 in / 600×600 px)</option>
+                      <option value="passport_in">India Passport (35×45 mm / 350×450 px)</option>
+                      <option value="passport_uk">UK Passport (35×45 mm / 413×531 px)</option>
+                    </optgroup>
+                    <optgroup label="Social Media">
+                      <option value="profile_sq">Profile square (1000×1000 px)</option>
+                      <option value="cover_tw">Twitter/X cover (1500×500 px)</option>
+                      <option value="post_ig">Instagram post (1080×1080 px)</option>
+                    </optgroup>
+                    <option value="custom">Custom…</option>
+                  </select>
+                </div>
+
+                <!-- Custom dimension inputs (shown only for "custom") -->
+                <div class="custom-dims hidden" id="customDims">
+                  <div class="inline-row" style="margin-top:8px;gap:6px">
+                    <input type="number" class="field dim-field" id="customW" placeholder="Width px" min="1" max="8000">
+                    <span class="row-label">×</span>
+                    <input type="number" class="field dim-field" id="customH" placeholder="Height px" min="1" max="8000">
+                  </div>
+                  <p class="panel-hint" style="margin-top:4px">Preset size overrides quality — image is scaled to fit exactly.</p>
+                </div>
+
+                <!-- Preset info badge -->
+                <div class="preset-info hidden" id="presetInfo">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span id="presetInfoText">–</span>
                 </div>
               </div>
             </div>
@@ -300,7 +382,6 @@
           </button>
 
         </aside>
-
       </div><!-- /workspace -->
     </div>
   </section>

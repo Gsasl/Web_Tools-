@@ -1,41 +1,61 @@
 'use strict';
 
 // ============================================================
-// 1. DOM REFS  (fail loudly if an ID is missing)
+// OUTPUT SIZE PRESETS
 // ============================================================
-const $  = id => document.getElementById(id);
+const SIZE_PRESETS = {
+  original:   null,
+  passport_eu:{ w:413,  h:531,  label:'EU Passport — 413×531 px (35×45 mm @ 300 dpi)' },
+  passport_us:{ w:600,  h:600,  label:'US Visa — 600×600 px (2×2 in @ 300 dpi)' },
+  passport_in:{ w:350,  h:450,  label:'India Passport — 350×450 px (35×45 mm @ 254 dpi)' },
+  passport_uk:{ w:413,  h:531,  label:'UK Passport — 413×531 px (35×45 mm @ 300 dpi)' },
+  profile_sq: { w:1000, h:1000, label:'Profile square — 1000×1000 px' },
+  cover_tw:   { w:1500, h:500,  label:'Twitter/X cover — 1500×500 px' },
+  post_ig:    { w:1080, h:1080, label:'Instagram post — 1080×1080 px' },
+  custom:     'custom',
+};
 
-const nav            = $('nav');
-const uploadState    = $('uploadState');
-const dropZone       = $('dropZone');
-const fileInput      = $('fileInput');
-const workspace      = $('workspace');
-const previewWrap    = $('previewWrap');
-const preview        = $('preview');
+// ============================================================
+// 1. DOM REFS
+// ============================================================
+const $ = id => document.getElementById(id);
 
-const detectedFormat = $('detectedFormat');
-const fileDimensions = $('fileDimensions');
-const fileCount      = $('fileCount');
-const resetBtn       = $('resetBtn');
+const nav             = $('nav');
+const uploadState     = $('uploadState');
+const dropZone        = $('dropZone');
+const fileInput       = $('fileInput');
+const workspace       = $('workspace');
+const previewWrap     = $('previewWrap');
+const preview         = $('preview');
 
-const cropBtn        = $('cropBtn');
-const mainRotateBtn  = $('mainRotateBtn');
-const aiBgBtn        = $('aiBgBtn');
+const detectedFormat  = $('detectedFormat');
+const dimTag          = $('dimTag');
+const dimPopup        = $('dimPopup');
+const popW            = $('popW');
+const popH            = $('popH');
+const popSize         = $('popSize');
+const popFmt          = $('popFmt');
+const fileCount       = $('fileCount');
+const resetBtn        = $('resetBtn');
 
-const cropBar        = $('cropBar');
-const cancelCropBtn  = $('cancelCropBtn');
-const rotateInCropBtn= $('rotateInCropBtn');
-const applyCropBtn   = $('applyCropBtn');
+const cropBtn         = $('cropBtn');
+const mainRotateBtn   = $('mainRotateBtn');
+const aiBgBtn         = $('aiBgBtn');
 
-const brightSlider   = $('brightSlider');
-const contrastSlider = $('contrastSlider');
-const graySlider     = $('graySlider');
-const blurSlider     = $('blurSlider');
-const brightVal      = $('brightVal');
-const contrastVal    = $('contrastVal');
-const grayVal        = $('grayVal');
-const blurVal        = $('blurVal');
-const resetEffectsBtn= $('resetEffectsBtn');
+const cropBar         = $('cropBar');
+const cancelCropBtn   = $('cancelCropBtn');
+const rotateInCropBtn = $('rotateInCropBtn');
+const applyCropBtn    = $('applyCropBtn');
+
+const brightSlider    = $('brightSlider');
+const contrastSlider  = $('contrastSlider');
+const graySlider      = $('graySlider');
+const blurSlider      = $('blurSlider');
+const brightVal       = $('brightVal');
+const contrastVal     = $('contrastVal');
+const grayVal         = $('grayVal');
+const blurVal         = $('blurVal');
+const resetEffectsBtn = $('resetEffectsBtn');
 
 const watermarkText    = $('watermarkText');
 const watermarkColor   = $('watermarkColor');
@@ -43,32 +63,46 @@ const watermarkOpacity = $('watermarkOpacity');
 const opacityVal       = $('opacityVal');
 const watermarkPos     = $('watermarkPos');
 
-const stripExif      = $('stripExif');
-const outputFormat   = $('outputFormat');
-const qualitySlider  = $('qualitySlider');
-const qualityValue   = $('qualityValue');
-const qualityRow     = $('qualityRow');
-const convertBtn     = $('convertBtn');
-const btnText        = $('btnText');
-const dlIcon         = $('dlIcon');
-const spinner        = $('spinner');
+const outputFormat    = $('outputFormat');
+const qualitySlider   = $('qualitySlider');
+const qualityValue    = $('qualityValue');
+const qualityRow      = $('qualityRow');
+const sizePreset      = $('sizePreset');
+const customDims      = $('customDims');
+const customW         = $('customW');
+const customH         = $('customH');
+const presetInfo      = $('presetInfo');
+const presetInfoText  = $('presetInfoText');
 
-const aiOverlay      = $('aiOverlay');
-const aiStatusText   = $('aiStatusText');
-const aiProgressBar  = $('aiProgressBar');
-const aiProgressPct  = $('aiProgressPct');
-const cancelAiBtn    = $('cancelAiBtn');
+const convertBtn      = $('convertBtn');
+const btnText         = $('btnText');
+const dlIcon          = $('dlIcon');
+const spinner         = $('spinner');
+
+const aiOverlay       = $('aiOverlay');
+const aiStatusText    = $('aiStatusText');
+const aiProgressBar   = $('aiProgressBar');
+const aiProgressPct   = $('aiProgressPct');
+const cancelAiBtn     = $('cancelAiBtn');
+
+// Background fill swatches
+const swatches        = document.querySelectorAll('.swatch');
+const bgColorPick     = $('bgColorPick');
+const applyCustomBg   = $('applyCustomBg');
+const bgCurSwatch     = $('bgCurSwatch');
+const bgCurLabel      = $('bgCurLabel');
 
 // ============================================================
 // 2. STATE
 // ============================================================
-let currentFiles      = [];
-let cropper           = null;
-let isCropping        = false;
-let originalPreviewSrc= null;
-let aiWorker          = null;
-let aiRunning         = false;
-let effectsRaf        = null;
+let currentFiles       = [];
+let cropper            = null;
+let isCropping         = false;
+let originalPreviewSrc = null;
+let aiWorker           = null;
+let aiRunning          = false;
+let effectsRaf         = null;
+let currentBgColor     = 'transparent'; // fill applied at export time
 
 // ============================================================
 // 3. NAV SCROLL SHADOW
@@ -81,13 +115,33 @@ window.addEventListener('scroll', () => {
 // 4. PANEL ACCORDION
 // ============================================================
 document.querySelectorAll('.panel-head').forEach(btn => {
-  btn.addEventListener('click', () => {
-    btn.closest('.panel').classList.toggle('open');
-  });
+  btn.addEventListener('click', () => btn.closest('.panel').classList.toggle('open'));
 });
 
 // ============================================================
-// 5. UPLOAD HANDLING
+// 5. DIMENSION POPUP
+// ============================================================
+dimTag.addEventListener('click', e => {
+  e.stopPropagation();
+  dimPopup.classList.toggle('hidden');
+});
+document.addEventListener('click', () => dimPopup.classList.add('hidden'));
+
+function updateDimPopup(file) {
+  popW.textContent   = preview.naturalWidth  ? `${preview.naturalWidth} px`  : '–';
+  popH.textContent   = preview.naturalHeight ? `${preview.naturalHeight} px` : '–';
+  popFmt.textContent = file ? (file.type.split('/')[1]?.toUpperCase() ?? '?') : '–';
+  popSize.textContent = file ? formatBytes(file.size) : '–';
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024)        return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+// ============================================================
+// 6. UPLOAD
 // ============================================================
 dropZone.addEventListener('click', () => fileInput.click());
 
@@ -100,13 +154,8 @@ dropZone.addEventListener('click', () => fileInput.click());
 ['dragleave','drop'].forEach(ev =>
   dropZone.addEventListener(ev, () => dropZone.classList.remove('drag-active'))
 );
-dropZone.addEventListener('drop', e => {
-  if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
-});
-fileInput.addEventListener('change', e => {
-  if (e.target.files.length) handleFiles(e.target.files);
-  fileInput.value = ''; // allow re-picking the same file
-});
+dropZone.addEventListener('drop', e => { if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+fileInput.addEventListener('change', e => { if (e.target.files.length) handleFiles(e.target.files); fileInput.value = ''; });
 resetBtn.addEventListener('click', resetToUpload);
 
 function resetToUpload() {
@@ -114,6 +163,8 @@ function resetToUpload() {
   if (isCropping) cancelCrop();
   currentFiles = [];
   originalPreviewSrc = null;
+  currentBgColor = 'transparent';
+  updateBgUI('transparent');
   workspace.classList.remove('visible');
   workspace.classList.add('hidden');
   uploadState.style.display = '';
@@ -127,64 +178,55 @@ async function handleFiles(files) {
   if (isCropping) cancelCrop();
   resetEffects();
   currentFiles = [];
+  currentBgColor = 'transparent';
+  updateBgUI('transparent');
 
   const valid = [];
   for (const file of files) {
     const name = file.name.toLowerCase();
     if (name.endsWith('.heic') || name.endsWith('.heif')) {
-      if (typeof heic2any === 'undefined') {
-        console.warn('heic2any not loaded — skipping', name);
-        continue;
-      }
+      if (typeof heic2any === 'undefined') { console.warn('heic2any not loaded'); continue; }
       try {
-        const out  = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+        const out = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
         const blobs = Array.isArray(out) ? out : [out];
-        blobs.forEach(b => valid.push(
-          new File([b], name.replace(/\.[^/.]+$/, '.jpg'), { type: 'image/jpeg' })
-        ));
-      } catch (e) {
-        console.warn('HEIC decode failed:', name, e);
-      }
+        blobs.forEach(b => valid.push(new File([b], name.replace(/\.[^/.]+$/, '.jpg'), { type: 'image/jpeg' })));
+      } catch (e) { console.warn('HEIC decode failed', name, e); }
     } else if (file.type && file.type.startsWith('image/')) {
       valid.push(file);
     }
   }
 
   if (!valid.length) {
-    alert('No valid images found.\nSupported formats: JPEG, PNG, WebP, HEIC.');
+    alert('No valid images found.\nSupported: JPEG, PNG, WebP, HEIC.');
     return;
   }
-
   currentFiles = valid;
 
-  // Switch to workspace
+  // Switch view
   uploadState.style.display = 'none';
   workspace.classList.remove('hidden');
   workspace.classList.add('visible');
 
-  // Update info chips
+  // Info chips
   const fmt = currentFiles[0].type.split('/')[1]?.toUpperCase().replace('JPEG','JPG') ?? '?';
   detectedFormat.textContent = currentFiles.length > 1 ? `Batch (${fmt})` : fmt;
   fileCount.textContent = currentFiles.length === 1 ? '1 file' : `${currentFiles.length} files`;
-  fileDimensions.textContent = '–';
+  dimTag.textContent = '…';
 
-  // Set preview
   const url = URL.createObjectURL(currentFiles[0]);
   preview.src = url;
   originalPreviewSrc = url;
   previewWrap.classList.remove('transparent');
 
   preview.onload = () => {
-    if (preview.naturalWidth) {
-      fileDimensions.textContent = `${preview.naturalWidth}×${preview.naturalHeight}`;
-    }
+    dimTag.textContent = `${preview.naturalWidth}×${preview.naturalHeight}`;
+    updateDimPopup(currentFiles[0]);
   };
 
-  // Batch mode: disable single-image tools
   const batch = currentFiles.length > 1;
-  cropBtn.disabled        = batch;
-  mainRotateBtn.disabled  = batch;
-  aiBgBtn.disabled        = batch;
+  cropBtn.disabled       = batch;
+  mainRotateBtn.disabled = batch;
+  aiBgBtn.disabled       = batch;
   if (batch) {
     aiBgBtn.textContent = 'AI BG Removal (single file only)';
   } else {
@@ -196,7 +238,7 @@ async function handleFiles(files) {
 }
 
 // ============================================================
-// 6. EFFECTS ENGINE  (rAF-debounced for smooth sliders)
+// 7. EFFECTS ENGINE
 // ============================================================
 function getFilter() {
   return [
@@ -208,16 +250,12 @@ function getFilter() {
 }
 
 function applyEffects() {
-  // Update labels synchronously (cheap)
   brightVal.textContent   = `${brightSlider.value}%`;
   contrastVal.textContent = `${contrastSlider.value}%`;
   grayVal.textContent     = `${graySlider.value}%`;
   blurVal.textContent     = `${blurSlider.value}px`;
-  // Defer style mutation to next paint
   if (effectsRaf) cancelAnimationFrame(effectsRaf);
-  effectsRaf = requestAnimationFrame(() => {
-    preview.style.filter = getFilter();
-  });
+  effectsRaf = requestAnimationFrame(() => { preview.style.filter = getFilter(); });
 }
 
 [brightSlider, contrastSlider, graySlider, blurSlider]
@@ -232,15 +270,52 @@ function resetEffects() {
   applyEffects();
 }
 
-// ============================================================
-// 7. WATERMARK OPACITY LABEL
-// ============================================================
 watermarkOpacity.addEventListener('input', () => {
   opacityVal.textContent = `${watermarkOpacity.value}%`;
 });
 
 // ============================================================
-// 8. ROTATE (standalone, without cropper)
+// 8. BACKGROUND FILL
+// ============================================================
+swatches.forEach(sw => {
+  sw.addEventListener('click', () => {
+    setActiveSwatch(sw);
+    currentBgColor = sw.dataset.color;
+    updateBgUI(currentBgColor);
+  });
+});
+
+applyCustomBg.addEventListener('click', () => {
+  const color = bgColorPick.value;
+  currentBgColor = color;
+  // Deselect preset swatches, highlight custom
+  swatches.forEach(s => s.classList.remove('active'));
+  updateBgUI(color);
+});
+
+function setActiveSwatch(activeSw) {
+  swatches.forEach(s => s.classList.remove('active'));
+  activeSw.classList.add('active');
+}
+
+function updateBgUI(color) {
+  if (color === 'transparent') {
+    bgCurSwatch.style.background = '';
+    bgCurSwatch.style.backgroundImage =
+      'linear-gradient(45deg,#bac3d4 25%,transparent 25%),linear-gradient(-45deg,#bac3d4 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#bac3d4 75%),linear-gradient(-45deg,transparent 75%,#bac3d4 75%)';
+    bgCurSwatch.style.backgroundSize = '8px 8px';
+    bgCurSwatch.style.backgroundPosition = '0 0,0 4px,4px -4px,-4px 0';
+    bgCurSwatch.style.backgroundColor = '#d0d8e8';
+    bgCurLabel.textContent = 'None (transparent)';
+  } else {
+    bgCurSwatch.style.backgroundImage = '';
+    bgCurSwatch.style.backgroundColor = color;
+    bgCurLabel.textContent = color;
+  }
+}
+
+// ============================================================
+// 9. ROTATE
 // ============================================================
 mainRotateBtn.addEventListener('click', () => {
   if (!currentFiles.length || isCropping || aiRunning) return;
@@ -248,8 +323,7 @@ mainRotateBtn.addEventListener('click', () => {
   const img = new Image();
   img.onload = () => {
     const c = document.createElement('canvas');
-    c.width  = img.naturalHeight;
-    c.height = img.naturalWidth;
+    c.width = img.naturalHeight; c.height = img.naturalWidth;
     const ctx = c.getContext('2d');
     ctx.translate(c.width / 2, c.height / 2);
     ctx.rotate(Math.PI / 2);
@@ -262,7 +336,8 @@ mainRotateBtn.addEventListener('click', () => {
       originalPreviewSrc = url;
       preview.src = url;
       preview.onload = () => {
-        fileDimensions.textContent = `${preview.naturalWidth}×${preview.naturalHeight}`;
+        dimTag.textContent = `${preview.naturalWidth}×${preview.naturalHeight}`;
+        updateDimPopup(f);
         applyEffects();
       };
     }, currentFiles[0].type);
@@ -271,39 +346,31 @@ mainRotateBtn.addEventListener('click', () => {
 });
 
 // ============================================================
-// 9. CROP
+// 10. CROP
 // ============================================================
 cropBtn.addEventListener('click', startCrop);
 cancelCropBtn.addEventListener('click', cancelCrop);
 applyCropBtn.addEventListener('click', applyCrop);
 rotateInCropBtn.addEventListener('click', () => { if (cropper) cropper.rotate(90); });
 
-function sidebarLockForCrop(lock) {
-  const sidebar = $('mainControls');
-  sidebar.style.opacity       = lock ? '0.38' : '';
-  sidebar.style.pointerEvents = lock ? 'none'  : '';
+function sidebarLock(lock) {
+  $('mainControls').style.opacity       = lock ? '0.38' : '';
+  $('mainControls').style.pointerEvents = lock ? 'none'  : '';
 }
 
 function startCrop() {
   if (!currentFiles.length || isCropping || aiRunning) return;
   isCropping = true;
   cropBar.classList.remove('hidden');
-  sidebarLockForCrop(true);
-  preview.style.filter = 'none';   // don't apply effects during crop
-
-  // Cropper.js needs the image visible and sized
-  cropper = new Cropper(preview, {
-    viewMode: 1,
-    autoCropArea: 0.8,
-    responsive: true,
-    checkCrossOrigin: false,
-  });
+  sidebarLock(true);
+  preview.style.filter = 'none';
+  cropper = new Cropper(preview, { viewMode: 1, autoCropArea: 0.8, responsive: true, checkCrossOrigin: false });
 }
 
 function cancelCrop() {
   if (!isCropping) return;
   cropBar.classList.add('hidden');
-  sidebarLockForCrop(false);
+  sidebarLock(false);
   if (cropper) { cropper.destroy(); cropper = null; }
   isCropping = false;
   if (originalPreviewSrc) preview.src = originalPreviewSrc;
@@ -314,26 +381,56 @@ function applyCrop() {
   if (!isCropping || !cropper) return;
   const canvas = cropper.getCroppedCanvas({ imageSmoothingQuality: 'high' });
   cropBar.classList.add('hidden');
-  sidebarLockForCrop(false);
+  sidebarLock(false);
   cropper.destroy(); cropper = null; isCropping = false;
 
   canvas.toBlob(blob => {
-    const ext = currentFiles[0].name.split('.').pop();
+    const ext  = currentFiles[0].name.split('.').pop();
     const name = currentFiles[0].name.replace(/\.[^/.]+$/, `-crop.${ext}`);
-    const f = new File([blob], name, { type: currentFiles[0].type });
+    const f    = new File([blob], name, { type: currentFiles[0].type });
     currentFiles[0] = f;
     const url = URL.createObjectURL(f);
     originalPreviewSrc = url;
     preview.src = url;
     preview.onload = () => {
-      fileDimensions.textContent = `${preview.naturalWidth}×${preview.naturalHeight}`;
+      dimTag.textContent = `${preview.naturalWidth}×${preview.naturalHeight}`;
+      updateDimPopup(f);
       applyEffects();
     };
   }, currentFiles[0].type, 0.95);
 }
 
 // ============================================================
-// 10. AI BACKGROUND REMOVAL
+// 11. OUTPUT SIZE PRESET
+// ============================================================
+sizePreset.addEventListener('change', () => {
+  const key = sizePreset.value;
+  const preset = SIZE_PRESETS[key];
+
+  customDims.classList.toggle('hidden', key !== 'custom');
+
+  if (!preset || key === 'original' || key === 'custom') {
+    presetInfo.classList.add('hidden');
+    return;
+  }
+  presetInfo.classList.remove('hidden');
+  presetInfoText.textContent = preset.label + ' — image will be scaled to fit, centered on fill color.';
+});
+
+function getOutputDimensions() {
+  const key = sizePreset.value;
+  if (key === 'original') return null;
+  if (key === 'custom') {
+    const w = parseInt(customW.value, 10);
+    const h = parseInt(customH.value, 10);
+    if (w > 0 && h > 0) return { w, h };
+    return null;
+  }
+  return SIZE_PRESETS[key] ?? null;
+}
+
+// ============================================================
+// 12. AI BACKGROUND REMOVAL
 // ============================================================
 function lockUI(msg = 'Working…') {
   aiRunning = true;
@@ -344,14 +441,12 @@ function lockUI(msg = 'Working…') {
   $('mainControls').classList.add('locked');
   convertBtn.disabled = true;
 }
-
 function unlockUI() {
   aiRunning = false;
   aiOverlay.classList.add('hidden');
   $('mainControls').classList.remove('locked');
   convertBtn.disabled = false;
 }
-
 function setProgress(msg, pct) {
   if (msg) aiStatusText.textContent = msg;
   aiProgressBar.style.width = `${pct}%`;
@@ -359,22 +454,17 @@ function setProgress(msg, pct) {
 }
 
 cancelAiBtn.addEventListener('click', () => {
-  if (aiWorker) {
-    aiWorker.postMessage({ action: 'cancel' });
-    aiWorker.onmessage = null;
-    aiWorker = null;
-  }
+  if (aiWorker) { aiWorker.postMessage({ action: 'cancel' }); aiWorker.onmessage = null; aiWorker = null; }
   unlockUI();
   if (originalPreviewSrc) { preview.src = originalPreviewSrc; applyEffects(); }
 });
 
-// Downsample to ≤1024px before sending to worker — faster inference, same quality mask
 function prepareForAI(file, maxPx = 1024) {
   return new Promise(resolve => {
     const img = new Image();
     img.onload = () => {
       const scale = Math.min(1, maxPx / Math.max(img.naturalWidth, img.naturalHeight));
-      const w = Math.round(img.naturalWidth  * scale);
+      const w = Math.round(img.naturalWidth * scale);
       const h = Math.round(img.naturalHeight * scale);
       const c = document.createElement('canvas');
       c.width = w; c.height = h;
@@ -387,23 +477,17 @@ function prepareForAI(file, maxPx = 1024) {
 
 aiBgBtn.addEventListener('click', async () => {
   if (!currentFiles.length || isCropping || aiRunning) return;
-
   lockUI('Preparing image…');
   setProgress('Preparing image…', 2);
 
-  if (!aiWorker) {
-    aiWorker = new Worker('worker.js', { type: 'module' });
-  }
+  if (!aiWorker) aiWorker = new Worker('worker.js', { type: 'module' });
 
   aiWorker.onmessage = e => {
     const r = e.data;
     if (r.status === 'downloading') {
-      setProgress(
-        r.progress < 5
-          ? 'Downloading AI model… (first run only, ~25 MB)'
-          : `Downloading model: ${r.progress}%`,
-        r.progress
-      );
+      setProgress(r.progress < 5
+        ? 'Downloading AI model… (first run only, ~25 MB)'
+        : `Downloading model: ${r.progress}%`, r.progress);
     } else if (r.status === 'processing') {
       setProgress('Removing background…', 100);
     } else if (r.status === 'done') {
@@ -418,41 +502,53 @@ aiBgBtn.addEventListener('click', async () => {
   aiWorker.postMessage({ action: 'run', imageBase64: base64 });
 });
 
-// BUG FIX: mask.data is 1-channel (grayscale, 0=bg, 255=fg).
-// Must convert to 4-channel RGBA with the mask values as the alpha channel
-// before passing to ImageData or destination-in compositing.
+// Fix: 1-ch grayscale mask → 4-ch RGBA + edge feathering to reduce artifacts
 function applyAIMask(aiData) {
   const orig = new Image();
   orig.src = URL.createObjectURL(currentFiles[0]);
   orig.onload = () => {
-    // 1. 1-ch grey → 4-ch RGBA  (white RGB, mask = alpha)
-    const grey = new Uint8ClampedArray(aiData.data); // already transferred (zero-copy)
-    const rgba = new Uint8ClampedArray(aiData.width * aiData.height * 4);
-    for (let i = 0; i < grey.length; i++) {
+    const mW = aiData.width, mH = aiData.height;
+    const grey = new Uint8ClampedArray(aiData.data);
+
+    // --- Feather edges: 1-pass box-blur on the mask (reduces harsh edge artifacts) ---
+    const feathered = new Uint8ClampedArray(grey.length);
+    const blurR = 2; // radius in pixels on the downsampled mask
+    for (let y = 0; y < mH; y++) {
+      for (let x = 0; x < mW; x++) {
+        let sum = 0, count = 0;
+        for (let dy = -blurR; dy <= blurR; dy++) {
+          for (let dx = -blurR; dx <= blurR; dx++) {
+            const nx = x + dx, ny = y + dy;
+            if (nx >= 0 && nx < mW && ny >= 0 && ny < mH) {
+              sum += grey[ny * mW + nx];
+              count++;
+            }
+          }
+        }
+        feathered[y * mW + x] = Math.round(sum / count);
+      }
+    }
+
+    // Convert 1-ch feathered mask → 4-ch RGBA (mask = alpha)
+    const rgba = new Uint8ClampedArray(mW * mH * 4);
+    for (let i = 0; i < feathered.length; i++) {
       rgba[i*4]   = 255;
       rgba[i*4+1] = 255;
       rgba[i*4+2] = 255;
-      rgba[i*4+3] = grey[i];   // alpha = mask value
+      rgba[i*4+3] = feathered[i];
     }
 
     const maskCanvas = document.createElement('canvas');
-    maskCanvas.width  = aiData.width;
-    maskCanvas.height = aiData.height;
-    maskCanvas.getContext('2d').putImageData(
-      new ImageData(rgba, aiData.width, aiData.height), 0, 0
-    );
+    maskCanvas.width = mW; maskCanvas.height = mH;
+    maskCanvas.getContext('2d').putImageData(new ImageData(rgba, mW, mH), 0, 0);
 
-    // 2. Composite: draw original, clip with mask
     const out = document.createElement('canvas');
-    out.width  = orig.naturalWidth;
-    out.height = orig.naturalHeight;
-    const ctx  = out.getContext('2d');
+    out.width = orig.naturalWidth; out.height = orig.naturalHeight;
+    const ctx = out.getContext('2d');
     ctx.drawImage(orig, 0, 0);
     ctx.globalCompositeOperation = 'destination-in';
-    // Scale the (possibly downsampled) mask to full image size
     ctx.drawImage(maskCanvas, 0, 0, out.width, out.height);
 
-    // 3. Export as PNG (must be PNG for transparency)
     out.toBlob(blob => {
       const name = currentFiles[0].name.replace(/\.[^/.]+$/, '-nobg.png');
       const f    = new File([blob], name, { type: 'image/png' });
@@ -463,11 +559,11 @@ function applyAIMask(aiData) {
       preview.src = url;
       outputFormat.value = 'image/png';
       previewWrap.classList.add('transparent');
-      fileDimensions.textContent = `${orig.naturalWidth}×${orig.naturalHeight}`;
       updateQualityUI();
       unlockUI();
+      updateDimPopup(f);
+      dimTag.textContent = `${orig.naturalWidth}×${orig.naturalHeight}`;
 
-      // Briefly confirm
       const origHTML = aiBgBtn.innerHTML;
       aiBgBtn.innerHTML = '✓ Background removed!';
       setTimeout(() => { aiBgBtn.innerHTML = origHTML; }, 3000);
@@ -476,7 +572,7 @@ function applyAIMask(aiData) {
 }
 
 // ============================================================
-// 11. EXPORT
+// 13. EXPORT
 // ============================================================
 outputFormat.addEventListener('change', updateQualityUI);
 qualitySlider.addEventListener('input', () => {
@@ -485,36 +581,63 @@ qualitySlider.addEventListener('input', () => {
 
 function updateQualityUI() {
   const isPng = outputFormat.value === 'image/png';
-  qualityRow.style.opacity       = isPng ? '0.4'  : '1';
-  qualitySlider.disabled         = isPng;
-  qualityValue.textContent       = isPng ? 'Lossless' : `${Math.round(qualitySlider.value * 100)}%`;
+  qualityRow.style.opacity = isPng ? '0.4' : '1';
+  qualitySlider.disabled   = isPng;
+  qualityValue.textContent = isPng ? 'Lossless' : `${Math.round(qualitySlider.value * 100)}%`;
 }
 
-// Draw one file to a blob: applies CSS filters permanently + optional watermark
+/**
+ * Draw a single file to a Blob.
+ * Applies: background fill → visual effects → image → watermark → optional resize.
+ * If a size preset is active, the canvas is forced to that size and the image is
+ * scaled-to-fit centered — this overrides quality-based sizing.
+ */
 function processToBlob(file, mime, quality) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
+      const dims = getOutputDimensions();
+
+      let cW = img.naturalWidth;
+      let cH = img.naturalHeight;
+
+      // If a preset is selected, output canvas = preset dimensions exactly
+      if (dims) { cW = dims.w; cH = dims.h; }
+
       const canvas = document.createElement('canvas');
-      canvas.width  = img.naturalWidth;
-      canvas.height = img.naturalHeight;
+      canvas.width  = cW;
+      canvas.height = cH;
       const ctx = canvas.getContext('2d');
 
-      // For lossy formats, fill white so transparent areas aren't black
-      if (mime !== 'image/png') {
+      // 1. Background fill (always paint first so it shows under transparent areas)
+      if (currentBgColor !== 'transparent') {
+        ctx.fillStyle = currentBgColor;
+        ctx.fillRect(0, 0, cW, cH);
+      } else if (mime !== 'image/png') {
+        // Non-PNG can't store alpha → white background
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, cW, cH);
       }
 
-      // Bake in CSS visual effects
+      // 2. Draw image — scale-to-fit into the canvas (letterbox)
+      let drawW = cW, drawH = cH, drawX = 0, drawY = 0;
+      if (dims) {
+        const scale = Math.min(cW / img.naturalWidth, cH / img.naturalHeight);
+        drawW = img.naturalWidth  * scale;
+        drawH = img.naturalHeight * scale;
+        drawX = (cW - drawW) / 2;
+        drawY = (cH - drawH) / 2;
+      }
+
+      // 3. Apply CSS filter effects baked into canvas
       ctx.filter = getFilter();
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
       ctx.filter = 'none';
 
-      // Watermark
+      // 4. Watermark
       const wText = watermarkText.value.trim();
       if (wText) {
-        const fontSize = Math.max(14, Math.round(canvas.width * 0.042));
+        const fontSize = Math.max(14, Math.round(cW * 0.042));
         ctx.font         = `bold ${fontSize}px 'Sora',system-ui,sans-serif`;
         ctx.fillStyle    = watermarkColor.value;
         ctx.globalAlpha  = parseInt(watermarkOpacity.value, 10) / 100;
@@ -522,19 +645,15 @@ function processToBlob(file, mime, quality) {
         ctx.shadowBlur   = 10;
         const pad = fontSize * 0.9;
         const pos = watermarkPos.value;
-        const isRight  = pos === 'br' || pos === 'tr';
-        const isBottom = pos === 'br' || pos === 'bl';
         if (pos === 'c') {
-          ctx.textAlign    = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(wText, canvas.width / 2, canvas.height / 2);
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(wText, cW / 2, cH / 2);
         } else {
-          ctx.textAlign    = isRight  ? 'right' : 'left';
-          ctx.textBaseline = isBottom ? 'bottom' : 'top';
-          ctx.fillText(wText,
-            isRight  ? canvas.width  - pad : pad,
-            isBottom ? canvas.height - pad : pad
-          );
+          const isR = pos === 'br' || pos === 'tr';
+          const isB = pos === 'br' || pos === 'bl';
+          ctx.textAlign    = isR ? 'right' : 'left';
+          ctx.textBaseline = isB ? 'bottom' : 'top';
+          ctx.fillText(wText, isR ? cW - pad : pad, isB ? cH - pad : pad);
         }
         ctx.globalAlpha = 1;
         ctx.shadowBlur  = 0;
@@ -548,7 +667,7 @@ function processToBlob(file, mime, quality) {
 }
 
 function triggerDownload(blob, name) {
-  const a   = document.createElement('a');
+  const a = document.createElement('a');
   const url = URL.createObjectURL(blob);
   a.href = url; a.download = name;
   document.body.appendChild(a);
@@ -583,11 +702,7 @@ convertBtn.addEventListener('click', async () => {
         const blob = await processToBlob(f, mime, quality);
         zip.file(`${stem(f.name)}-edited.${ext}`, blob);
       }
-      const zipBlob = await zip.generateAsync({
-        type: 'blob',
-        compression: 'DEFLATE',
-        compressionOptions: { level: 6 }
-      });
+      const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
       triggerDownload(zipBlob, 'PixelKit_Batch.zip');
     }
   } catch (err) {
@@ -602,6 +717,7 @@ convertBtn.addEventListener('click', async () => {
 });
 
 // ============================================================
-// 12. QUALITY INIT
+// 14. INIT
 // ============================================================
 updateQualityUI();
+updateBgUI('transparent');
