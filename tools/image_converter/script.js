@@ -1,481 +1,607 @@
-// ==========================================
-// 1. DOM ELEMENTS & GLOBAL STATE
-// ==========================================
-const fileInput = document.getElementById('fileInput');
-const dropZone = document.getElementById('dropZone');
-const uploadText = document.getElementById('uploadText');
-const uploadIcon = document.getElementById('uploadIcon');
-const workspace = document.getElementById('workspace');
-const preview = document.getElementById('preview');
-const mainRotateBtn = document.getElementById('mainRotateBtn');
+'use strict';
 
-const detectedFormat = document.getElementById('detectedFormat');
-const fileCount = document.getElementById('fileCount'); 
+// ============================================================
+// 1. DOM REFS  (fail loudly if an ID is missing)
+// ============================================================
+const $  = id => document.getElementById(id);
 
-const cropControls = document.getElementById('cropControls');
-const cancelCropBtn = document.getElementById('cancelCropBtn');
-const applyCropBtn = document.getElementById('applyCropBtn');
-const rotateBtn = document.getElementById('rotateBtn');
-const mainControls = document.getElementById('mainControls');
-const cropBtn = document.getElementById('cropBtn');
+const nav            = $('nav');
+const uploadState    = $('uploadState');
+const dropZone       = $('dropZone');
+const fileInput      = $('fileInput');
+const workspace      = $('workspace');
+const previewWrap    = $('previewWrap');
+const preview        = $('preview');
 
-const stripExif = document.getElementById('stripExif');
-const aiBgBtn = document.getElementById('aiBgBtn');
-const brightSlider = document.getElementById('brightSlider');
-const contrastSlider = document.getElementById('contrastSlider');
-const graySlider = document.getElementById('graySlider');
-const blurSlider = document.getElementById('blurSlider');
-const brightVal = document.getElementById('brightVal');
-const contrastVal = document.getElementById('contrastVal');
-const grayVal = document.getElementById('grayVal');
-const blurVal = document.getElementById('blurVal');
-const resetEffectsBtn = document.getElementById('resetEffectsBtn');
+const detectedFormat = $('detectedFormat');
+const fileDimensions = $('fileDimensions');
+const fileCount      = $('fileCount');
+const resetBtn       = $('resetBtn');
 
-const watermarkText = document.getElementById('watermarkText');
-const watermarkColor = document.getElementById('watermarkColor');
+const cropBtn        = $('cropBtn');
+const mainRotateBtn  = $('mainRotateBtn');
+const aiBgBtn        = $('aiBgBtn');
 
-const outputFormat = document.getElementById('outputFormat');
-const qualitySlider = document.getElementById('qualitySlider');
-const qualityValue = document.getElementById('qualityValue');
-const convertBtn = document.getElementById('convertBtn');
-const btnText = document.getElementById('btnText');
-const spinner = document.getElementById('spinner');
+const cropBar        = $('cropBar');
+const cancelCropBtn  = $('cancelCropBtn');
+const rotateInCropBtn= $('rotateInCropBtn');
+const applyCropBtn   = $('applyCropBtn');
 
-let currentFiles = []; 
-let cropper = null; 
-let originalPreviewSrc = null; 
-let isCropping = false;
+const brightSlider   = $('brightSlider');
+const contrastSlider = $('contrastSlider');
+const graySlider     = $('graySlider');
+const blurSlider     = $('blurSlider');
+const brightVal      = $('brightVal');
+const contrastVal    = $('contrastVal');
+const grayVal        = $('grayVal');
+const blurVal        = $('blurVal');
+const resetEffectsBtn= $('resetEffectsBtn');
 
-// ==========================================
-// 2. STUB FEATURES
-// ==========================================
-let aiWorker = null;
+const watermarkText    = $('watermarkText');
+const watermarkColor   = $('watermarkColor');
+const watermarkOpacity = $('watermarkOpacity');
+const opacityVal       = $('opacityVal');
+const watermarkPos     = $('watermarkPos');
 
-if (aiBgBtn) {
-    aiBgBtn.addEventListener('click', () => {
-        if (currentFiles.length !== 1 || isCropping) return;
+const stripExif      = $('stripExif');
+const outputFormat   = $('outputFormat');
+const qualitySlider  = $('qualitySlider');
+const qualityValue   = $('qualityValue');
+const qualityRow     = $('qualityRow');
+const convertBtn     = $('convertBtn');
+const btnText        = $('btnText');
+const dlIcon         = $('dlIcon');
+const spinner        = $('spinner');
 
-        // Disable UI during processing
-        aiBgBtn.disabled = true;
-        const originalBtnText = aiBgBtn.innerHTML;
-        aiBgBtn.innerHTML = '<span class="spinner" style="display:inline-block; border-color:#0f172a; border-top-color:transparent;"></span> Initializing AI...';
-        convertBtn.disabled = true;
+const aiOverlay      = $('aiOverlay');
+const aiStatusText   = $('aiStatusText');
+const aiProgressBar  = $('aiProgressBar');
+const aiProgressPct  = $('aiProgressPct');
+const cancelAiBtn    = $('cancelAiBtn');
 
-        // Initialize Web Worker if it doesn't exist
-        if (!aiWorker) {
-            aiWorker = new Worker('worker.js', { type: 'module' });
-        }
+// ============================================================
+// 2. STATE
+// ============================================================
+let currentFiles      = [];
+let cropper           = null;
+let isCropping        = false;
+let originalPreviewSrc= null;
+let aiWorker          = null;
+let aiRunning         = false;
+let effectsRaf        = null;
 
-        // Listen for messages coming back from the background worker
-        aiWorker.onmessage = (e) => {
-            const response = e.data;
+// ============================================================
+// 3. NAV SCROLL SHADOW
+// ============================================================
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('shadow', window.scrollY > 8);
+}, { passive: true });
 
-            if (response.status === 'loading' || response.status === 'processing') {
-                aiBgBtn.innerHTML = `<span class="spinner" style="display:inline-block; border-color:#0f172a; border-top-color:transparent;"></span> ${response.message}`;
-            } 
-            else if (response.status === 'done') {
-                // The AI returned the raw pixels of the mask. Let's apply it!
-                applyAIMask(response);
-            } 
-            else if (response.status === 'error') {
-                alert("AI Error: " + response.error);
-                resetAIBtn(originalBtnText);
-            }
-        };
+// ============================================================
+// 4. PANEL ACCORDION
+// ============================================================
+document.querySelectorAll('.panel-head').forEach(btn => {
+  btn.addEventListener('click', () => {
+    btn.closest('.panel').classList.toggle('open');
+  });
+});
 
-        // Convert current image to base64 and send it to the worker
-        const reader = new FileReader();
-        reader.readAsDataURL(currentFiles[0]);
-        reader.onload = () => {
-            aiWorker.postMessage({ imageBase64: reader.result });
-        };
-    });
-}
-
-// Function to composite the AI mask over the original image
-function applyAIMask(aiData) {
-    const originalImg = new Image();
-    originalImg.src = URL.createObjectURL(currentFiles[0]);
-
-    originalImg.onload = () => {
-        // 1. Rebuild the AI mask into an actual Canvas Image Data object
-        const maskImageData = new ImageData(new Uint8ClampedArray(aiData.data), aiData.width, aiData.height);
-        const maskCanvas = document.createElement('canvas');
-        maskCanvas.width = aiData.width;
-        maskCanvas.height = aiData.height;
-        maskCanvas.getContext('2d').putImageData(maskImageData, 0, 0);
-
-        // 2. Create the final composite canvas
-        const finalCanvas = document.createElement('canvas');
-        finalCanvas.width = originalImg.naturalWidth;
-        finalCanvas.height = originalImg.naturalHeight;
-        const ctx = finalCanvas.getContext('2d');
-
-        // Draw original image
-        ctx.drawImage(originalImg, 0, 0);
-
-        // This specific blend mode keeps ONLY the pixels where the mask overlaps
-        ctx.globalCompositeOperation = 'destination-in';
-        ctx.drawImage(maskCanvas, 0, 0, finalCanvas.width, finalCanvas.height);
-
-        // 3. Export as PNG (Must be PNG to support transparency)
-        finalCanvas.toBlob((blob) => {
-            const newName = currentFiles[0].name.replace(/\.[^/.]+$/, "-nobg.png");
-            const newFile = new File([blob], newName, { type: 'image/png' });
-            
-            // Update app state
-            currentFiles[0] = newFile;
-            originalPreviewSrc = URL.createObjectURL(newFile);
-            preview.src = originalPreviewSrc;
-            
-            // Force output format dropdown to PNG to preserve transparency
-            if(outputFormat) outputFormat.value = 'image/png';
-            updateQualityUI();
-
-            resetAIBtn("✨ AI Background Removed!");
-            setTimeout(() => resetAIBtn("✨ AI Background Removal"), 3000);
-        }, 'image/png');
-    };
-}
-
-function resetAIBtn(text) {
-    aiBgBtn.innerHTML = text;
-    aiBgBtn.disabled = false;
-    convertBtn.disabled = false;
-}
-// ==========================================
-// 3. UPLOAD LOGIC
-// ==========================================
+// ============================================================
+// 5. UPLOAD HANDLING
+// ============================================================
 dropZone.addEventListener('click', () => fileInput.click());
 
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    dropZone.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
+['dragenter','dragover','dragleave','drop'].forEach(ev =>
+  dropZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); })
+);
+['dragenter','dragover'].forEach(ev =>
+  dropZone.addEventListener(ev, () => dropZone.classList.add('drag-active'))
+);
+['dragleave','drop'].forEach(ev =>
+  dropZone.addEventListener(ev, () => dropZone.classList.remove('drag-active'))
+);
+dropZone.addEventListener('drop', e => {
+  if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
 });
-['dragenter', 'dragover'].forEach(eventName => {
-    dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-active'), false);
+fileInput.addEventListener('change', e => {
+  if (e.target.files.length) handleFiles(e.target.files);
+  fileInput.value = ''; // allow re-picking the same file
 });
-['dragleave', 'drop'].forEach(eventName => {
-    dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-active'), false);
-});
+resetBtn.addEventListener('click', resetToUpload);
 
-dropZone.addEventListener('drop', (e) => { 
-    if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); 
-});
-fileInput.addEventListener('change', function(e) { 
-    if(e.target.files.length) handleFiles(e.target.files); 
-});
+function resetToUpload() {
+  if (aiRunning) return;
+  if (isCropping) cancelCrop();
+  currentFiles = [];
+  originalPreviewSrc = null;
+  workspace.classList.remove('visible');
+  workspace.classList.add('hidden');
+  uploadState.style.display = '';
+  previewWrap.classList.remove('transparent');
+  resetEffects();
+  convertBtn.disabled = true;
+}
 
 async function handleFiles(files) {
-    try {
-        if (isCropping) cancelCrop(); 
-        cropper = null; 
-        isCropping = false;
-        resetEffects();
-        currentFiles = []; 
+  if (aiRunning) return;
+  if (isCropping) cancelCrop();
+  resetEffects();
+  currentFiles = [];
 
-        if(uploadIcon) uploadIcon.innerText = "⏳";
-        if(uploadText) uploadText.innerText = `Processing ${files.length} file(s)...`;
-
-        for (let i = 0; i < files.length; i++) {
-            let fileToProcess = files[i];
-            const fileName = fileToProcess.name.toLowerCase();
-
-            // 1. Check for HEIC
-            if (fileName.endsWith('.heic') || fileName.endsWith('.heif')) {
-                try {
-                    const jpegBlob = await heic2any({ blob: fileToProcess, toType: "image/jpeg", quality: 0.9 });
-                    const newName = fileToProcess.name.replace(/\.[^/.]+$/, ".jpg");
-                    fileToProcess = new File([jpegBlob], newName, { type: "image/jpeg" });
-                    currentFiles.push(fileToProcess);
-                } catch (error) {
-                    console.error("Could not decode HEIC:", fileName);
-                }
-            } 
-            // 2. ONLY accept standard images, skip everything else
-            else if (fileToProcess.type && fileToProcess.type.startsWith('image/')) {
-                currentFiles.push(fileToProcess);
-            } else {
-                console.warn("Skipped invalid or unreadable file:", fileName);
-            }
-        }
-
-        if (currentFiles.length === 0) {
-            alert("No valid images were found in your upload.");
-            if(uploadIcon) uploadIcon.innerText = "📥";
-            if(uploadText) uploadText.innerText = "Drag & Drop images here (Supports Batch Upload)";
-            return;
-        }
-        if(aiBgBtn) {
-            aiBgBtn.disabled = currentFiles.length > 1;
-            aiBgBtn.innerText = currentFiles.length > 1 ? "AI BG Removal (Disabled in Batch)" : "✨ AI Background Removal";
-        }
-
-        // Processing complete - reveal workspace
-        if(dropZone) dropZone.style.display = 'none';
-        if(workspace) workspace.classList.remove('hidden');
-
-        // Safely update UI
-        if(fileCount) fileCount.innerText = currentFiles.length;
-        
-        // BULLETPROOF Format Text generator
-        if(detectedFormat) {
-            let formatStr = 'UNKNOWN';
-            // Only attempt to split if it actually has a format string with a slash
-            if (currentFiles[0].type && currentFiles[0].type.includes('/')) {
-                formatStr = currentFiles[0].type.split('/')[1].toUpperCase();
-            }
-            detectedFormat.innerText = currentFiles.length > 1 ? `Batch (${formatStr})` : formatStr;
-        }
-
-        if(preview) {
-            preview.src = URL.createObjectURL(currentFiles[0]);
-            originalPreviewSrc = preview.src; 
-        }
-        
-        if(convertBtn) convertBtn.disabled = false;
-        
-        if(cropBtn) {
-            cropBtn.disabled = currentFiles.length > 1; 
-            cropBtn.innerText = currentFiles.length > 1 ? "Crop (Disabled in Batch)" : "◩ Crop & Rotate";
-        }
-
-        updateQualityUI();
-    } catch (err) {
-        console.error("Upload Error:", err);
-        alert("An error occurred during upload. Check console for details.");
+  const valid = [];
+  for (const file of files) {
+    const name = file.name.toLowerCase();
+    if (name.endsWith('.heic') || name.endsWith('.heif')) {
+      if (typeof heic2any === 'undefined') {
+        console.warn('heic2any not loaded — skipping', name);
+        continue;
+      }
+      try {
+        const out  = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 });
+        const blobs = Array.isArray(out) ? out : [out];
+        blobs.forEach(b => valid.push(
+          new File([b], name.replace(/\.[^/.]+$/, '.jpg'), { type: 'image/jpeg' })
+        ));
+      } catch (e) {
+        console.warn('HEIC decode failed:', name, e);
+      }
+    } else if (file.type && file.type.startsWith('image/')) {
+      valid.push(file);
     }
-    if(cropBtn) {
-            cropBtn.disabled = currentFiles.length > 1; 
-            cropBtn.innerText = currentFiles.length > 1 ? "Disabled in Batch" : "◩ Crop";
-        }
-        if(mainRotateBtn) {
-            mainRotateBtn.disabled = currentFiles.length > 1;
-        }
-}
-// ==========================================
-// 4. EFFECTS ENGINE
-// ==========================================
-const filters = [brightSlider, contrastSlider, graySlider, blurSlider];
-filters.forEach(slider => { 
-    if(slider) slider.addEventListener('input', applyEffects); 
-});
+  }
 
-function getFilterString() {
-    // Bulletproof fallbacks in case HTML is ever missing the sliders
-    const b = brightSlider ? brightSlider.value : 100;
-    const c = contrastSlider ? contrastSlider.value : 100;
-    const g = graySlider ? graySlider.value : 0;
-    const bl = blurSlider ? blurSlider.value : 0;
-    return `brightness(${b}%) contrast(${c}%) grayscale(${g}%) blur(${bl}px)`;
+  if (!valid.length) {
+    alert('No valid images found.\nSupported formats: JPEG, PNG, WebP, HEIC.');
+    return;
+  }
+
+  currentFiles = valid;
+
+  // Switch to workspace
+  uploadState.style.display = 'none';
+  workspace.classList.remove('hidden');
+  workspace.classList.add('visible');
+
+  // Update info chips
+  const fmt = currentFiles[0].type.split('/')[1]?.toUpperCase().replace('JPEG','JPG') ?? '?';
+  detectedFormat.textContent = currentFiles.length > 1 ? `Batch (${fmt})` : fmt;
+  fileCount.textContent = currentFiles.length === 1 ? '1 file' : `${currentFiles.length} files`;
+  fileDimensions.textContent = '–';
+
+  // Set preview
+  const url = URL.createObjectURL(currentFiles[0]);
+  preview.src = url;
+  originalPreviewSrc = url;
+  previewWrap.classList.remove('transparent');
+
+  preview.onload = () => {
+    if (preview.naturalWidth) {
+      fileDimensions.textContent = `${preview.naturalWidth}×${preview.naturalHeight}`;
+    }
+  };
+
+  // Batch mode: disable single-image tools
+  const batch = currentFiles.length > 1;
+  cropBtn.disabled        = batch;
+  mainRotateBtn.disabled  = batch;
+  aiBgBtn.disabled        = batch;
+  if (batch) {
+    aiBgBtn.textContent = 'AI BG Removal (single file only)';
+  } else {
+    aiBgBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> AI Background Removal`;
+  }
+
+  convertBtn.disabled = false;
+  updateQualityUI();
+}
+
+// ============================================================
+// 6. EFFECTS ENGINE  (rAF-debounced for smooth sliders)
+// ============================================================
+function getFilter() {
+  return [
+    `brightness(${brightSlider.value}%)`,
+    `contrast(${contrastSlider.value}%)`,
+    `grayscale(${graySlider.value}%)`,
+    `blur(${blurSlider.value}px)`
+  ].join(' ');
 }
 
 function applyEffects() {
-    if(brightVal) brightVal.innerText = `${brightSlider.value}%`;
-    if(contrastVal) contrastVal.innerText = `${contrastSlider.value}%`;
-    if(grayVal) grayVal.innerText = `${graySlider.value}%`;
-    if(blurVal) blurVal.innerText = `${blurSlider.value}px`;
-    preview.style.filter = getFilterString(); 
+  // Update labels synchronously (cheap)
+  brightVal.textContent   = `${brightSlider.value}%`;
+  contrastVal.textContent = `${contrastSlider.value}%`;
+  grayVal.textContent     = `${graySlider.value}%`;
+  blurVal.textContent     = `${blurSlider.value}px`;
+  // Defer style mutation to next paint
+  if (effectsRaf) cancelAnimationFrame(effectsRaf);
+  effectsRaf = requestAnimationFrame(() => {
+    preview.style.filter = getFilter();
+  });
 }
 
-if(resetEffectsBtn) {
-    resetEffectsBtn.addEventListener('click', resetEffects);
-}
+[brightSlider, contrastSlider, graySlider, blurSlider]
+  .forEach(s => s.addEventListener('input', applyEffects));
+
+resetEffectsBtn.addEventListener('click', resetEffects);
 function resetEffects() {
-    if(brightSlider) brightSlider.value = 100; 
-    if(contrastSlider) contrastSlider.value = 100;
-    if(graySlider) graySlider.value = 0; 
-    if(blurSlider) blurSlider.value = 0;
-    applyEffects();
+  brightSlider.value = 100;
+  contrastSlider.value = 100;
+  graySlider.value = 0;
+  blurSlider.value = 0;
+  applyEffects();
 }
 
-// ==========================================
-// 5. CROP & ROTATE
-// ==========================================
-if(cropBtn) cropBtn.addEventListener('click', startCrop);
-if(cancelCropBtn) cancelCropBtn.addEventListener('click', cancelCrop);
-if(applyCropBtn) applyCropBtn.addEventListener('click', applyCrop);
-if(rotateBtn) rotateBtn.addEventListener('click', () => { if (cropper) cropper.rotate(90); });
-// ==========================================
-// STANDALONE MAIN MENU ROTATE
-// ==========================================
-if(mainRotateBtn) {
-    mainRotateBtn.addEventListener('click', () => {
-        if (currentFiles.length !== 1 || isCropping) return;
-        
-        const img = new Image();
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            
-            // Swap width and height for a 90-degree rotation
-            canvas.width = img.naturalHeight;
-            canvas.height = img.naturalWidth;
-            
-            // Mathematically rotate the canvas matrix
-            ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.rotate(90 * Math.PI / 180);
-            ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
-            
-            // Save the newly rotated image back into the app state
-            canvas.toBlob((blob) => {
-                const newFile = new File([blob], currentFiles[0].name, { type: currentFiles[0].type });
-                currentFiles[0] = newFile;
-                originalPreviewSrc = URL.createObjectURL(newFile);
-                preview.src = originalPreviewSrc;
-                applyEffects(); // Re-apply visual filters to the new rotation
-            }, currentFiles[0].type);
-        };
-        img.src = URL.createObjectURL(currentFiles[0]);
-    });
+// ============================================================
+// 7. WATERMARK OPACITY LABEL
+// ============================================================
+watermarkOpacity.addEventListener('input', () => {
+  opacityVal.textContent = `${watermarkOpacity.value}%`;
+});
+
+// ============================================================
+// 8. ROTATE (standalone, without cropper)
+// ============================================================
+mainRotateBtn.addEventListener('click', () => {
+  if (!currentFiles.length || isCropping || aiRunning) return;
+
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    c.width  = img.naturalHeight;
+    c.height = img.naturalWidth;
+    const ctx = c.getContext('2d');
+    ctx.translate(c.width / 2, c.height / 2);
+    ctx.rotate(Math.PI / 2);
+    ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+
+    c.toBlob(blob => {
+      const f = new File([blob], currentFiles[0].name, { type: currentFiles[0].type });
+      currentFiles[0] = f;
+      const url = URL.createObjectURL(f);
+      originalPreviewSrc = url;
+      preview.src = url;
+      preview.onload = () => {
+        fileDimensions.textContent = `${preview.naturalWidth}×${preview.naturalHeight}`;
+        applyEffects();
+      };
+    }, currentFiles[0].type);
+  };
+  img.src = URL.createObjectURL(currentFiles[0]);
+});
+
+// ============================================================
+// 9. CROP
+// ============================================================
+cropBtn.addEventListener('click', startCrop);
+cancelCropBtn.addEventListener('click', cancelCrop);
+applyCropBtn.addEventListener('click', applyCrop);
+rotateInCropBtn.addEventListener('click', () => { if (cropper) cropper.rotate(90); });
+
+function sidebarLockForCrop(lock) {
+  const sidebar = $('mainControls');
+  sidebar.style.opacity       = lock ? '0.38' : '';
+  sidebar.style.pointerEvents = lock ? 'none'  : '';
 }
 
 function startCrop() {
-    if (currentFiles.length !== 1 || isCropping) return;
-    isCropping = true;
-    mainControls.classList.add('hidden'); 
-    
-    setTimeout(() => {
-        cropControls.classList.remove('hidden'); 
-        preview.style.filter = 'none'; 
-        cropper = new Cropper(preview, {
-            viewMode: 1, autoCropArea: 0.8, responsive: true,
-        });
-    }, 150);
+  if (!currentFiles.length || isCropping || aiRunning) return;
+  isCropping = true;
+  cropBar.classList.remove('hidden');
+  sidebarLockForCrop(true);
+  preview.style.filter = 'none';   // don't apply effects during crop
+
+  // Cropper.js needs the image visible and sized
+  cropper = new Cropper(preview, {
+    viewMode: 1,
+    autoCropArea: 0.8,
+    responsive: true,
+    checkCrossOrigin: false,
+  });
 }
 
 function cancelCrop() {
-    if (!isCropping || !cropper) return;
-    cropControls.classList.add('hidden');
-    setTimeout(() => {
-        mainControls.classList.remove('hidden');
-        cropper.destroy(); 
-        cropper = null; isCropping = false;
-        preview.src = originalPreviewSrc;
-        applyEffects(); 
-    }, 150);
+  if (!isCropping) return;
+  cropBar.classList.add('hidden');
+  sidebarLockForCrop(false);
+  if (cropper) { cropper.destroy(); cropper = null; }
+  isCropping = false;
+  if (originalPreviewSrc) preview.src = originalPreviewSrc;
+  applyEffects();
 }
 
 function applyCrop() {
-    if (!isCropping || !cropper) return;
-    const croppedCanvas = cropper.getCroppedCanvas();
-    cropControls.classList.add('hidden');
-    
-    setTimeout(() => {
-        mainControls.classList.remove('hidden');
-        cropper.destroy(); cropper = null; isCropping = false;
-        preview.src = croppedCanvas.toDataURL(); 
-        applyEffects(); 
-        croppedCanvas.toBlob(function(blob) {
-            const newName = currentFiles[0].name.replace(/\.[^/.]+$/, "-edited." + currentFiles[0].name.split('.').pop());
-            const croppedFile = new File([blob], newName, { type: currentFiles[0].type });
-            currentFiles[0] = croppedFile; 
-            originalPreviewSrc = URL.createObjectURL(croppedFile);
-        }, currentFiles[0].type); 
-    }, 150);
+  if (!isCropping || !cropper) return;
+  const canvas = cropper.getCroppedCanvas({ imageSmoothingQuality: 'high' });
+  cropBar.classList.add('hidden');
+  sidebarLockForCrop(false);
+  cropper.destroy(); cropper = null; isCropping = false;
+
+  canvas.toBlob(blob => {
+    const ext = currentFiles[0].name.split('.').pop();
+    const name = currentFiles[0].name.replace(/\.[^/.]+$/, `-crop.${ext}`);
+    const f = new File([blob], name, { type: currentFiles[0].type });
+    currentFiles[0] = f;
+    const url = URL.createObjectURL(f);
+    originalPreviewSrc = url;
+    preview.src = url;
+    preview.onload = () => {
+      fileDimensions.textContent = `${preview.naturalWidth}×${preview.naturalHeight}`;
+      applyEffects();
+    };
+  }, currentFiles[0].type, 0.95);
 }
 
-// ==========================================
-// 6. OUTPUT & ZIP ENGINE
-// ==========================================
-if(outputFormat) outputFormat.addEventListener('change', updateQualityUI);
-if(qualitySlider) qualitySlider.addEventListener('input', updateQualityUI);
+// ============================================================
+// 10. AI BACKGROUND REMOVAL
+// ============================================================
+function lockUI(msg = 'Working…') {
+  aiRunning = true;
+  aiStatusText.textContent = msg;
+  aiProgressBar.style.width = '0%';
+  aiProgressPct.textContent = '0%';
+  aiOverlay.classList.remove('hidden');
+  $('mainControls').classList.add('locked');
+  convertBtn.disabled = true;
+}
+
+function unlockUI() {
+  aiRunning = false;
+  aiOverlay.classList.add('hidden');
+  $('mainControls').classList.remove('locked');
+  convertBtn.disabled = false;
+}
+
+function setProgress(msg, pct) {
+  if (msg) aiStatusText.textContent = msg;
+  aiProgressBar.style.width = `${pct}%`;
+  aiProgressPct.textContent = `${Math.round(pct)}%`;
+}
+
+cancelAiBtn.addEventListener('click', () => {
+  if (aiWorker) {
+    aiWorker.postMessage({ action: 'cancel' });
+    aiWorker.onmessage = null;
+    aiWorker = null;
+  }
+  unlockUI();
+  if (originalPreviewSrc) { preview.src = originalPreviewSrc; applyEffects(); }
+});
+
+// Downsample to ≤1024px before sending to worker — faster inference, same quality mask
+function prepareForAI(file, maxPx = 1024) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxPx / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.round(img.naturalWidth  * scale);
+      const h = Math.round(img.naturalHeight * scale);
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL('image/jpeg', 0.92));
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+aiBgBtn.addEventListener('click', async () => {
+  if (!currentFiles.length || isCropping || aiRunning) return;
+
+  lockUI('Preparing image…');
+  setProgress('Preparing image…', 2);
+
+  if (!aiWorker) {
+    aiWorker = new Worker('worker.js', { type: 'module' });
+  }
+
+  aiWorker.onmessage = e => {
+    const r = e.data;
+    if (r.status === 'downloading') {
+      setProgress(
+        r.progress < 5
+          ? 'Downloading AI model… (first run only, ~25 MB)'
+          : `Downloading model: ${r.progress}%`,
+        r.progress
+      );
+    } else if (r.status === 'processing') {
+      setProgress('Removing background…', 100);
+    } else if (r.status === 'done') {
+      applyAIMask(r);
+    } else if (r.status === 'error') {
+      alert('AI Error: ' + r.error);
+      unlockUI();
+    }
+  };
+
+  const base64 = await prepareForAI(currentFiles[0]);
+  aiWorker.postMessage({ action: 'run', imageBase64: base64 });
+});
+
+// BUG FIX: mask.data is 1-channel (grayscale, 0=bg, 255=fg).
+// Must convert to 4-channel RGBA with the mask values as the alpha channel
+// before passing to ImageData or destination-in compositing.
+function applyAIMask(aiData) {
+  const orig = new Image();
+  orig.src = URL.createObjectURL(currentFiles[0]);
+  orig.onload = () => {
+    // 1. 1-ch grey → 4-ch RGBA  (white RGB, mask = alpha)
+    const grey = new Uint8ClampedArray(aiData.data); // already transferred (zero-copy)
+    const rgba = new Uint8ClampedArray(aiData.width * aiData.height * 4);
+    for (let i = 0; i < grey.length; i++) {
+      rgba[i*4]   = 255;
+      rgba[i*4+1] = 255;
+      rgba[i*4+2] = 255;
+      rgba[i*4+3] = grey[i];   // alpha = mask value
+    }
+
+    const maskCanvas = document.createElement('canvas');
+    maskCanvas.width  = aiData.width;
+    maskCanvas.height = aiData.height;
+    maskCanvas.getContext('2d').putImageData(
+      new ImageData(rgba, aiData.width, aiData.height), 0, 0
+    );
+
+    // 2. Composite: draw original, clip with mask
+    const out = document.createElement('canvas');
+    out.width  = orig.naturalWidth;
+    out.height = orig.naturalHeight;
+    const ctx  = out.getContext('2d');
+    ctx.drawImage(orig, 0, 0);
+    ctx.globalCompositeOperation = 'destination-in';
+    // Scale the (possibly downsampled) mask to full image size
+    ctx.drawImage(maskCanvas, 0, 0, out.width, out.height);
+
+    // 3. Export as PNG (must be PNG for transparency)
+    out.toBlob(blob => {
+      const name = currentFiles[0].name.replace(/\.[^/.]+$/, '-nobg.png');
+      const f    = new File([blob], name, { type: 'image/png' });
+      currentFiles[0] = f;
+
+      const url = URL.createObjectURL(f);
+      originalPreviewSrc = url;
+      preview.src = url;
+      outputFormat.value = 'image/png';
+      previewWrap.classList.add('transparent');
+      fileDimensions.textContent = `${orig.naturalWidth}×${orig.naturalHeight}`;
+      updateQualityUI();
+      unlockUI();
+
+      // Briefly confirm
+      const origHTML = aiBgBtn.innerHTML;
+      aiBgBtn.innerHTML = '✓ Background removed!';
+      setTimeout(() => { aiBgBtn.innerHTML = origHTML; }, 3000);
+    }, 'image/png');
+  };
+}
+
+// ============================================================
+// 11. EXPORT
+// ============================================================
+outputFormat.addEventListener('change', updateQualityUI);
+qualitySlider.addEventListener('input', () => {
+  qualityValue.textContent = `${Math.round(qualitySlider.value * 100)}%`;
+});
 
 function updateQualityUI() {
-    if(!outputFormat || !qualitySlider) return;
-    if(outputFormat.value === 'image/png') {
-        qualitySlider.disabled = true; qualitySlider.style.opacity = '0.5';
-        qualityValue.innerText = 'Lossless'; qualityValue.style.background = '#e2e8f0'; 
-    } else {
-        qualitySlider.disabled = false; qualitySlider.style.opacity = '1';
-        qualityValue.innerText = Math.round(qualitySlider.value * 100) + '%';
-        qualityValue.style.background = '#dbeafe'; 
-    }
+  const isPng = outputFormat.value === 'image/png';
+  qualityRow.style.opacity       = isPng ? '0.4'  : '1';
+  qualitySlider.disabled         = isPng;
+  qualityValue.textContent       = isPng ? 'Lossless' : `${Math.round(qualitySlider.value * 100)}%`;
 }
 
-function processToBlob(file, mimeType, quality) {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = img.naturalWidth;
-            canvas.height = img.naturalHeight;
-            
-            ctx.filter = getFilterString(); 
-            ctx.drawImage(img, 0, 0);
+// Draw one file to a blob: applies CSS filters permanently + optional watermark
+function processToBlob(file, mime, quality) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
 
-            if (watermarkText && watermarkText.value.trim() !== '') {
-                const text = watermarkText.value;
-                const fontSize = Math.max(20, canvas.width * 0.05); 
-                
-                ctx.filter = 'none'; 
-                ctx.font = `bold ${fontSize}px system-ui, -apple-system, sans-serif`;
-                ctx.fillStyle = watermarkColor ? watermarkColor.value : '#ffffff';
-                ctx.textAlign = 'right';
-                ctx.textBaseline = 'bottom';
-                ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-                ctx.shadowBlur = 8;
-                ctx.shadowOffsetX = 2;
-                ctx.shadowOffsetY = 2;
+      // For lossy formats, fill white so transparent areas aren't black
+      if (mime !== 'image/png') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
 
-                ctx.fillText(text, canvas.width - (canvas.width * 0.03), canvas.height - (canvas.height * 0.03));
-            }
-            
-            canvas.toBlob((blob) => { resolve(blob); }, mimeType, quality);
-        };
-        img.src = URL.createObjectURL(file);
-    });
-}
+      // Bake in CSS visual effects
+      ctx.filter = getFilter();
+      ctx.drawImage(img, 0, 0);
+      ctx.filter = 'none';
 
-async function processAndDownloadSingle(file, mimeType, extension, quality) {
-    const blob = await processToBlob(file, mimeType, quality);
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${file.name.split('.')[0]}-edited.${extension}`; 
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-if(convertBtn) {
-    convertBtn.addEventListener('click', async function() {
-        if (currentFiles.length === 0 || isCropping) return;
-
-        convertBtn.disabled = true;
-        btnText.innerText = currentFiles.length > 1 ? 'Zipping Files...' : 'Processing...';
-        spinner.style.display = 'inline-block';
-
-        const mimeType = outputFormat.value;
-        let newExtension = mimeType.split('/')[1];
-        if (newExtension === 'jpeg') newExtension = 'jpg';
-        const quality = mimeType === 'image/png' ? 1 : parseFloat(qualitySlider.value);
-
-        try {
-            if (currentFiles.length === 1) {
-                await processAndDownloadSingle(currentFiles[0], mimeType, newExtension, quality);
-            } else {
-                const zip = new JSZip();
-                for (let i = 0; i < currentFiles.length; i++) {
-                    const blob = await processToBlob(currentFiles[i], mimeType, quality);
-                    const originalName = currentFiles[i].name.split('.')[0];
-                    zip.file(`${originalName}-edited.${newExtension}`, blob);
-                }
-                
-                const zipContent = await zip.generateAsync({type:"blob"});
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(zipContent);
-                link.download = "Batch_Images_Converted.zip";
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-        } catch (error) {
-            console.error("Error during export:", error);
-            alert("An error occurred during export. Please check the console.");
-        } finally {
-            convertBtn.disabled = false;
-            btnText.innerText = 'Download Image(s)';
-            spinner.style.display = 'none';
+      // Watermark
+      const wText = watermarkText.value.trim();
+      if (wText) {
+        const fontSize = Math.max(14, Math.round(canvas.width * 0.042));
+        ctx.font         = `bold ${fontSize}px 'Sora',system-ui,sans-serif`;
+        ctx.fillStyle    = watermarkColor.value;
+        ctx.globalAlpha  = parseInt(watermarkOpacity.value, 10) / 100;
+        ctx.shadowColor  = 'rgba(0,0,0,0.55)';
+        ctx.shadowBlur   = 10;
+        const pad = fontSize * 0.9;
+        const pos = watermarkPos.value;
+        const isRight  = pos === 'br' || pos === 'tr';
+        const isBottom = pos === 'br' || pos === 'bl';
+        if (pos === 'c') {
+          ctx.textAlign    = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(wText, canvas.width / 2, canvas.height / 2);
+        } else {
+          ctx.textAlign    = isRight  ? 'right' : 'left';
+          ctx.textBaseline = isBottom ? 'bottom' : 'top';
+          ctx.fillText(wText,
+            isRight  ? canvas.width  - pad : pad,
+            isBottom ? canvas.height - pad : pad
+          );
         }
-    });
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur  = 0;
+      }
+
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), mime, quality);
+    };
+    img.onerror = () => reject(new Error(`Failed to load: ${file.name}`));
+    img.src = URL.createObjectURL(file);
+  });
 }
+
+function triggerDownload(blob, name) {
+  const a   = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  a.href = url; a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function stem(filename) { return filename.replace(/\.[^/.]+$/, ''); }
+
+convertBtn.addEventListener('click', async () => {
+  if (!currentFiles.length || isCropping || aiRunning) return;
+
+  convertBtn.disabled = true;
+  dlIcon.style.display = 'none';
+  spinner.classList.remove('hidden');
+  btnText.textContent = currentFiles.length > 1 ? 'Zipping…' : 'Exporting…';
+
+  const mime    = outputFormat.value;
+  let   ext     = mime.split('/')[1] ?? 'jpg';
+  if (ext === 'jpeg') ext = 'jpg';
+  const quality = mime === 'image/png' ? 1 : parseFloat(qualitySlider.value);
+
+  try {
+    if (currentFiles.length === 1) {
+      const blob = await processToBlob(currentFiles[0], mime, quality);
+      triggerDownload(blob, `${stem(currentFiles[0].name)}-edited.${ext}`);
+    } else {
+      if (typeof JSZip === 'undefined') throw new Error('JSZip not loaded — please refresh.');
+      const zip = new JSZip();
+      for (const f of currentFiles) {
+        const blob = await processToBlob(f, mime, quality);
+        zip.file(`${stem(f.name)}-edited.${ext}`, blob);
+      }
+      const zipBlob = await zip.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 }
+      });
+      triggerDownload(zipBlob, 'PixelKit_Batch.zip');
+    }
+  } catch (err) {
+    console.error('Export error:', err);
+    alert('Export failed: ' + err.message);
+  } finally {
+    convertBtn.disabled = false;
+    spinner.classList.add('hidden');
+    dlIcon.style.display = '';
+    btnText.textContent = 'Download';
+  }
+});
+
+// ============================================================
+// 12. QUALITY INIT
+// ============================================================
+updateQualityUI();
