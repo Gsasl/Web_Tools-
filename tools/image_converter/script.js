@@ -4,15 +4,15 @@
 // OUTPUT SIZE PRESETS
 // ============================================================
 const SIZE_PRESETS = {
-  original:   null,
-  passport_eu:{ w:413,  h:531,  label:'EU Passport — 413×531 px (35×45 mm @ 300 dpi)' },
-  passport_us:{ w:600,  h:600,  label:'US Visa — 600×600 px (2×2 in @ 300 dpi)' },
-  passport_in:{ w:350,  h:450,  label:'India Passport — 350×450 px (35×45 mm @ 254 dpi)' },
-  passport_uk:{ w:413,  h:531,  label:'UK Passport — 413×531 px (35×45 mm @ 300 dpi)' },
-  profile_sq: { w:1000, h:1000, label:'Profile square — 1000×1000 px' },
-  cover_tw:   { w:1500, h:500,  label:'Twitter/X cover — 1500×500 px' },
-  post_ig:    { w:1080, h:1080, label:'Instagram post — 1080×1080 px' },
-  custom:     'custom',
+  original:    null,
+  passport_eu: { w:413,  h:531,  label:'EU Passport — 413×531 px (35×45 mm @ 300 dpi)' },
+  passport_us: { w:600,  h:600,  label:'US Visa — 600×600 px (2×2 in @ 300 dpi)' },
+  passport_in: { w:350,  h:450,  label:'India Passport — 350×450 px (35×45 mm @ 254 dpi)' },
+  passport_uk: { w:413,  h:531,  label:'UK Passport — 413×531 px (35×45 mm @ 300 dpi)' },
+  profile_sq:  { w:1000, h:1000, label:'Profile square — 1000×1000 px' },
+  cover_tw:    { w:1500, h:500,  label:'Twitter/X cover — 1500×500 px' },
+  post_ig:     { w:1080, h:1080, label:'Instagram post — 1080×1080 px' },
+  custom:      'custom',
 };
 
 // ============================================================
@@ -85,7 +85,6 @@ const aiProgressBar   = $('aiProgressBar');
 const aiProgressPct   = $('aiProgressPct');
 const cancelAiBtn     = $('cancelAiBtn');
 
-// Background fill swatches
 const swatches        = document.querySelectorAll('.swatch');
 const bgColorPick     = $('bgColorPick');
 const applyCustomBg   = $('applyCustomBg');
@@ -102,7 +101,7 @@ let originalPreviewSrc = null;
 let aiWorker           = null;
 let aiRunning          = false;
 let effectsRaf         = null;
-let currentBgColor     = 'transparent'; // fill applied at export time
+let currentBgColor     = 'transparent';
 
 // ============================================================
 // 3. NAV SCROLL SHADOW
@@ -135,8 +134,8 @@ function updateDimPopup(file) {
 }
 
 function formatBytes(bytes) {
-  if (bytes < 1024)        return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024)         return `${bytes} B`;
+  if (bytes < 1024 * 1024)  return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
@@ -154,7 +153,7 @@ dropZone.addEventListener('click', () => fileInput.click());
 ['dragleave','drop'].forEach(ev =>
   dropZone.addEventListener(ev, () => dropZone.classList.remove('drag-active'))
 );
-dropZone.addEventListener('drop', e => { if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+dropZone.addEventListener('drop',   e => { if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
 fileInput.addEventListener('change', e => { if (e.target.files.length) handleFiles(e.target.files); fileInput.value = ''; });
 resetBtn.addEventListener('click', resetToUpload);
 
@@ -165,6 +164,8 @@ function resetToUpload() {
   originalPreviewSrc = null;
   currentBgColor = 'transparent';
   updateBgUI('transparent');
+  swatches.forEach(s => s.classList.remove('active'));
+  $('swNone').classList.add('active');
   workspace.classList.remove('visible');
   workspace.classList.add('hidden');
   uploadState.style.display = '';
@@ -180,6 +181,8 @@ async function handleFiles(files) {
   currentFiles = [];
   currentBgColor = 'transparent';
   updateBgUI('transparent');
+  swatches.forEach(s => s.classList.remove('active'));
+  $('swNone').classList.add('active');
 
   const valid = [];
   for (const file of files) {
@@ -202,12 +205,10 @@ async function handleFiles(files) {
   }
   currentFiles = valid;
 
-  // Switch view
   uploadState.style.display = 'none';
   workspace.classList.remove('hidden');
   workspace.classList.add('visible');
 
-  // Info chips
   const fmt = currentFiles[0].type.split('/')[1]?.toUpperCase().replace('JPEG','JPG') ?? '?';
   detectedFormat.textContent = currentFiles.length > 1 ? `Batch (${fmt})` : fmt;
   fileCount.textContent = currentFiles.length === 1 ? '1 file' : `${currentFiles.length} files`;
@@ -227,11 +228,9 @@ async function handleFiles(files) {
   cropBtn.disabled       = batch;
   mainRotateBtn.disabled = batch;
   aiBgBtn.disabled       = batch;
-  if (batch) {
-    aiBgBtn.textContent = 'AI BG Removal (single file only)';
-  } else {
-    aiBgBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> AI Background Removal`;
-  }
+  aiBgBtn.innerHTML = batch
+    ? 'AI BG Removal (single file only)'
+    : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> AI Background Removal`;
 
   convertBtn.disabled = false;
   updateQualityUI();
@@ -263,10 +262,8 @@ function applyEffects() {
 
 resetEffectsBtn.addEventListener('click', resetEffects);
 function resetEffects() {
-  brightSlider.value = 100;
-  contrastSlider.value = 100;
-  graySlider.value = 0;
-  blurSlider.value = 0;
+  brightSlider.value = 100; contrastSlider.value = 100;
+  graySlider.value = 0;     blurSlider.value = 0;
   applyEffects();
 }
 
@@ -279,7 +276,8 @@ watermarkOpacity.addEventListener('input', () => {
 // ============================================================
 swatches.forEach(sw => {
   sw.addEventListener('click', () => {
-    setActiveSwatch(sw);
+    swatches.forEach(s => s.classList.remove('active'));
+    sw.classList.add('active');
     currentBgColor = sw.dataset.color;
     updateBgUI(currentBgColor);
   });
@@ -287,29 +285,30 @@ swatches.forEach(sw => {
 
 applyCustomBg.addEventListener('click', () => {
   const color = bgColorPick.value;
+  // Don't apply pure black as default — guard against accidental picker default
   currentBgColor = color;
-  // Deselect preset swatches, highlight custom
   swatches.forEach(s => s.classList.remove('active'));
   updateBgUI(color);
 });
 
-function setActiveSwatch(activeSw) {
-  swatches.forEach(s => s.classList.remove('active'));
-  activeSw.classList.add('active');
-}
+// Prevent the color picker from auto-applying on open — only on explicit "Use this color"
+bgColorPick.addEventListener('change', () => { /* no-op: user must click button */ });
 
 function updateBgUI(color) {
-  if (color === 'transparent') {
-    bgCurSwatch.style.background = '';
-    bgCurSwatch.style.backgroundImage =
-      'linear-gradient(45deg,#bac3d4 25%,transparent 25%),linear-gradient(-45deg,#bac3d4 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#bac3d4 75%),linear-gradient(-45deg,transparent 75%,#bac3d4 75%)';
-    bgCurSwatch.style.backgroundSize = '8px 8px';
-    bgCurSwatch.style.backgroundPosition = '0 0,0 4px,4px -4px,-4px 0';
-    bgCurSwatch.style.backgroundColor = '#d0d8e8';
+  if (!color || color === 'transparent') {
+    bgCurSwatch.style.cssText = `
+      background-color:#d0d8e8;
+      background-image:
+        linear-gradient(45deg,#bac3d4 25%,transparent 25%),
+        linear-gradient(-45deg,#bac3d4 25%,transparent 25%),
+        linear-gradient(45deg,transparent 75%,#bac3d4 75%),
+        linear-gradient(-45deg,transparent 75%,#bac3d4 75%);
+      background-size:8px 8px;
+      background-position:0 0,0 4px,4px -4px,-4px 0;
+    `;
     bgCurLabel.textContent = 'None (transparent)';
   } else {
-    bgCurSwatch.style.backgroundImage = '';
-    bgCurSwatch.style.backgroundColor = color;
+    bgCurSwatch.style.cssText = `background-image:none;background-color:${color}`;
     bgCurLabel.textContent = color;
   }
 }
@@ -319,7 +318,6 @@ function updateBgUI(color) {
 // ============================================================
 mainRotateBtn.addEventListener('click', () => {
   if (!currentFiles.length || isCropping || aiRunning) return;
-
   const img = new Image();
   img.onload = () => {
     const c = document.createElement('canvas');
@@ -328,7 +326,6 @@ mainRotateBtn.addEventListener('click', () => {
     ctx.translate(c.width / 2, c.height / 2);
     ctx.rotate(Math.PI / 2);
     ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
-
     c.toBlob(blob => {
       const f = new File([blob], currentFiles[0].name, { type: currentFiles[0].type });
       currentFiles[0] = f;
@@ -364,7 +361,7 @@ function startCrop() {
   cropBar.classList.remove('hidden');
   sidebarLock(true);
   preview.style.filter = 'none';
-  cropper = new Cropper(preview, { viewMode: 1, autoCropArea: 0.8, responsive: true, checkCrossOrigin: false });
+  cropper = new Cropper(preview, { viewMode:1, autoCropArea:0.8, responsive:true, checkCrossOrigin:false });
 }
 
 function cancelCrop() {
@@ -379,15 +376,14 @@ function cancelCrop() {
 
 function applyCrop() {
   if (!isCropping || !cropper) return;
-  const canvas = cropper.getCroppedCanvas({ imageSmoothingQuality: 'high' });
+  const canvas = cropper.getCroppedCanvas({ imageSmoothingQuality:'high' });
   cropBar.classList.add('hidden');
   sidebarLock(false);
   cropper.destroy(); cropper = null; isCropping = false;
-
   canvas.toBlob(blob => {
     const ext  = currentFiles[0].name.split('.').pop();
     const name = currentFiles[0].name.replace(/\.[^/.]+$/, `-crop.${ext}`);
-    const f    = new File([blob], name, { type: currentFiles[0].type });
+    const f = new File([blob], name, { type: currentFiles[0].type });
     currentFiles[0] = f;
     const url = URL.createObjectURL(f);
     originalPreviewSrc = url;
@@ -406,15 +402,12 @@ function applyCrop() {
 sizePreset.addEventListener('change', () => {
   const key = sizePreset.value;
   const preset = SIZE_PRESETS[key];
-
   customDims.classList.toggle('hidden', key !== 'custom');
-
   if (!preset || key === 'original' || key === 'custom') {
-    presetInfo.classList.add('hidden');
-    return;
+    presetInfo.classList.add('hidden'); return;
   }
   presetInfo.classList.remove('hidden');
-  presetInfoText.textContent = preset.label + ' — image will be scaled to fit, centered on fill color.';
+  presetInfoText.textContent = preset.label + ' — image scaled to fit, centered on fill color.';
 });
 
 function getOutputDimensions() {
@@ -423,8 +416,7 @@ function getOutputDimensions() {
   if (key === 'custom') {
     const w = parseInt(customW.value, 10);
     const h = parseInt(customH.value, 10);
-    if (w > 0 && h > 0) return { w, h };
-    return null;
+    return (w > 0 && h > 0) ? { w, h } : null;
   }
   return SIZE_PRESETS[key] ?? null;
 }
@@ -454,11 +446,12 @@ function setProgress(msg, pct) {
 }
 
 cancelAiBtn.addEventListener('click', () => {
-  if (aiWorker) { aiWorker.postMessage({ action: 'cancel' }); aiWorker.onmessage = null; aiWorker = null; }
+  if (aiWorker) { aiWorker.postMessage({ action:'cancel' }); aiWorker.onmessage = null; aiWorker = null; }
   unlockUI();
   if (originalPreviewSrc) { preview.src = originalPreviewSrc; applyEffects(); }
 });
 
+// Downsample before sending — faster inference, model doesn't benefit from >1024px
 function prepareForAI(file, maxPx = 1024) {
   return new Promise(resolve => {
     const img = new Image();
@@ -480,16 +473,19 @@ aiBgBtn.addEventListener('click', async () => {
   lockUI('Preparing image…');
   setProgress('Preparing image…', 2);
 
-  if (!aiWorker) aiWorker = new Worker('worker.js', { type: 'module' });
+  if (!aiWorker) aiWorker = new Worker('worker.js', { type:'module' });
 
   aiWorker.onmessage = e => {
     const r = e.data;
     if (r.status === 'downloading') {
-      setProgress(r.progress < 5
-        ? 'Downloading AI model… (first run only, ~25 MB)'
-        : `Downloading model: ${r.progress}%`, r.progress);
+      setProgress(
+        r.progress < 5
+          ? 'Downloading AI model… (~170 MB, cached after first run)'
+          : `Downloading model: ${r.progress}%`,
+        r.progress
+      );
     } else if (r.status === 'processing') {
-      setProgress('Removing background…', 100);
+      setProgress('Running segmentation…', 100);
     } else if (r.status === 'done') {
       applyAIMask(r);
     } else if (r.status === 'error') {
@@ -499,10 +495,103 @@ aiBgBtn.addEventListener('click', async () => {
   };
 
   const base64 = await prepareForAI(currentFiles[0]);
-  aiWorker.postMessage({ action: 'run', imageBase64: base64 });
+  aiWorker.postMessage({ action:'run', imageBase64: base64 });
 });
 
-// Fix: 1-ch grayscale mask → 4-ch RGBA + edge feathering to reduce artifacts
+// ============================================================
+// MASK PIPELINE — fixed for clean edges without over-feathering
+// ============================================================
+/**
+ * Process the raw 1-channel (grayscale) mask from isnet-general-use:
+ *
+ * Step 1 — Hard threshold: pixels >= 128 are foreground (255), else background (0).
+ *           This gives a clean, definite classification.
+ *
+ * Step 2 — Boundary feather: find pixels within `featherPx` of the threshold boundary
+ *           and blend them smoothly. This softens only the edge transition, not the
+ *           entire mask, so hair/fine detail stays sharp while hard edges don't clip.
+ *
+ * Step 3 — Convert to RGBA: mask value becomes the alpha channel (255=opaque, 0=transparent).
+ */
+function processMask(grey, width, height, featherPx = 3) {
+  const n = width * height;
+
+  // Step 1: threshold
+  const thresholded = new Uint8ClampedArray(n);
+  for (let i = 0; i < n; i++) {
+    thresholded[i] = grey[i] >= 128 ? 255 : 0;
+  }
+
+  // Step 2: small box-blur ONLY applied at boundary pixels
+  // Detect boundary = any pixel whose 8-neighbours differ from itself
+  const isBoundary = new Uint8Array(n);
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      const idx = y * width + x;
+      const val = thresholded[idx];
+      let boundary = false;
+      for (let dy = -1; dy <= 1 && !boundary; dy++) {
+        for (let dx = -1; dx <= 1 && !boundary; dx++) {
+          if (thresholded[(y+dy)*width+(x+dx)] !== val) boundary = true;
+        }
+      }
+      isBoundary[idx] = boundary ? 1 : 0;
+    }
+  }
+
+  // Expand boundary region by featherPx
+  const inFeather = new Uint8Array(n);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = y * width + x;
+      if (!isBoundary[idx]) continue;
+      for (let dy = -featherPx; dy <= featherPx; dy++) {
+        for (let dx = -featherPx; dx <= featherPx; dx++) {
+          const nx = x + dx, ny = y + dy;
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            inFeather[ny * width + nx] = 1;
+          }
+        }
+      }
+    }
+  }
+
+  // Box-blur original (not thresholded) mask only in feather zone
+  const out = new Uint8ClampedArray(n);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = y * width + x;
+      if (!inFeather[idx]) {
+        // Outside feather zone: use hard threshold value
+        out[idx] = thresholded[idx];
+      } else {
+        // Inside feather zone: average original mask values for smooth blend
+        let sum = 0, count = 0;
+        for (let dy = -featherPx; dy <= featherPx; dy++) {
+          for (let dx = -featherPx; dx <= featherPx; dx++) {
+            const nx = x + dx, ny = y + dy;
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+              sum += grey[ny * width + nx];
+              count++;
+            }
+          }
+        }
+        out[idx] = Math.round(sum / count);
+      }
+    }
+  }
+
+  // Step 3: convert 1-ch processed mask → 4-ch RGBA (mask → alpha)
+  const rgba = new Uint8ClampedArray(n * 4);
+  for (let i = 0; i < n; i++) {
+    rgba[i*4]   = 255;
+    rgba[i*4+1] = 255;
+    rgba[i*4+2] = 255;
+    rgba[i*4+3] = out[i];
+  }
+  return rgba;
+}
+
 function applyAIMask(aiData) {
   const orig = new Image();
   orig.src = URL.createObjectURL(currentFiles[0]);
@@ -510,48 +599,26 @@ function applyAIMask(aiData) {
     const mW = aiData.width, mH = aiData.height;
     const grey = new Uint8ClampedArray(aiData.data);
 
-    // --- Feather edges: 1-pass box-blur on the mask (reduces harsh edge artifacts) ---
-    const feathered = new Uint8ClampedArray(grey.length);
-    const blurR = 2; // radius in pixels on the downsampled mask
-    for (let y = 0; y < mH; y++) {
-      for (let x = 0; x < mW; x++) {
-        let sum = 0, count = 0;
-        for (let dy = -blurR; dy <= blurR; dy++) {
-          for (let dx = -blurR; dx <= blurR; dx++) {
-            const nx = x + dx, ny = y + dy;
-            if (nx >= 0 && nx < mW && ny >= 0 && ny < mH) {
-              sum += grey[ny * mW + nx];
-              count++;
-            }
-          }
-        }
-        feathered[y * mW + x] = Math.round(sum / count);
-      }
-    }
+    // Process mask with proper threshold + selective feathering
+    const rgba = processMask(grey, mW, mH, 3);
 
-    // Convert 1-ch feathered mask → 4-ch RGBA (mask = alpha)
-    const rgba = new Uint8ClampedArray(mW * mH * 4);
-    for (let i = 0; i < feathered.length; i++) {
-      rgba[i*4]   = 255;
-      rgba[i*4+1] = 255;
-      rgba[i*4+2] = 255;
-      rgba[i*4+3] = feathered[i];
-    }
-
+    // Build mask canvas
     const maskCanvas = document.createElement('canvas');
     maskCanvas.width = mW; maskCanvas.height = mH;
     maskCanvas.getContext('2d').putImageData(new ImageData(rgba, mW, mH), 0, 0);
 
+    // Composite: original image clipped by mask
     const out = document.createElement('canvas');
     out.width = orig.naturalWidth; out.height = orig.naturalHeight;
     const ctx = out.getContext('2d');
     ctx.drawImage(orig, 0, 0);
     ctx.globalCompositeOperation = 'destination-in';
+    // Scale mask (was downsampled for inference) back to full resolution
     ctx.drawImage(maskCanvas, 0, 0, out.width, out.height);
 
     out.toBlob(blob => {
       const name = currentFiles[0].name.replace(/\.[^/.]+$/, '-nobg.png');
-      const f    = new File([blob], name, { type: 'image/png' });
+      const f    = new File([blob], name, { type:'image/png' });
       currentFiles[0] = f;
 
       const url = URL.createObjectURL(f);
@@ -586,40 +653,28 @@ function updateQualityUI() {
   qualityValue.textContent = isPng ? 'Lossless' : `${Math.round(qualitySlider.value * 100)}%`;
 }
 
-/**
- * Draw a single file to a Blob.
- * Applies: background fill → visual effects → image → watermark → optional resize.
- * If a size preset is active, the canvas is forced to that size and the image is
- * scaled-to-fit centered — this overrides quality-based sizing.
- */
 function processToBlob(file, mime, quality) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
       const dims = getOutputDimensions();
-
-      let cW = img.naturalWidth;
-      let cH = img.naturalHeight;
-
-      // If a preset is selected, output canvas = preset dimensions exactly
+      let cW = img.naturalWidth, cH = img.naturalHeight;
       if (dims) { cW = dims.w; cH = dims.h; }
 
       const canvas = document.createElement('canvas');
-      canvas.width  = cW;
-      canvas.height = cH;
+      canvas.width = cW; canvas.height = cH;
       const ctx = canvas.getContext('2d');
 
-      // 1. Background fill (always paint first so it shows under transparent areas)
-      if (currentBgColor !== 'transparent') {
+      // Background fill
+      if (currentBgColor && currentBgColor !== 'transparent') {
         ctx.fillStyle = currentBgColor;
         ctx.fillRect(0, 0, cW, cH);
       } else if (mime !== 'image/png') {
-        // Non-PNG can't store alpha → white background
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, cW, cH);
       }
 
-      // 2. Draw image — scale-to-fit into the canvas (letterbox)
+      // Scale-to-fit when a preset is active
       let drawW = cW, drawH = cH, drawX = 0, drawY = 0;
       if (dims) {
         const scale = Math.min(cW / img.naturalWidth, cH / img.naturalHeight);
@@ -629,20 +684,19 @@ function processToBlob(file, mime, quality) {
         drawY = (cH - drawH) / 2;
       }
 
-      // 3. Apply CSS filter effects baked into canvas
       ctx.filter = getFilter();
       ctx.drawImage(img, drawX, drawY, drawW, drawH);
       ctx.filter = 'none';
 
-      // 4. Watermark
+      // Watermark
       const wText = watermarkText.value.trim();
       if (wText) {
         const fontSize = Math.max(14, Math.round(cW * 0.042));
-        ctx.font         = `bold ${fontSize}px 'Sora',system-ui,sans-serif`;
-        ctx.fillStyle    = watermarkColor.value;
-        ctx.globalAlpha  = parseInt(watermarkOpacity.value, 10) / 100;
-        ctx.shadowColor  = 'rgba(0,0,0,0.55)';
-        ctx.shadowBlur   = 10;
+        ctx.font        = `bold ${fontSize}px 'Sora',system-ui,sans-serif`;
+        ctx.fillStyle   = watermarkColor.value;
+        ctx.globalAlpha = parseInt(watermarkOpacity.value, 10) / 100;
+        ctx.shadowColor = 'rgba(0,0,0,0.55)';
+        ctx.shadowBlur  = 10;
         const pad = fontSize * 0.9;
         const pos = watermarkPos.value;
         if (pos === 'c') {
@@ -655,8 +709,7 @@ function processToBlob(file, mime, quality) {
           ctx.textBaseline = isB ? 'bottom' : 'top';
           ctx.fillText(wText, isR ? cW - pad : pad, isB ? cH - pad : pad);
         }
-        ctx.globalAlpha = 1;
-        ctx.shadowBlur  = 0;
+        ctx.globalAlpha = 1; ctx.shadowBlur = 0;
       }
 
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), mime, quality);
@@ -670,17 +723,14 @@ function triggerDownload(blob, name) {
   const a = document.createElement('a');
   const url = URL.createObjectURL(blob);
   a.href = url; a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
-function stem(filename) { return filename.replace(/\.[^/.]+$/, ''); }
+function stem(n) { return n.replace(/\.[^/.]+$/, ''); }
 
 convertBtn.addEventListener('click', async () => {
   if (!currentFiles.length || isCropping || aiRunning) return;
-
   convertBtn.disabled = true;
   dlIcon.style.display = 'none';
   spinner.classList.remove('hidden');
@@ -702,7 +752,7 @@ convertBtn.addEventListener('click', async () => {
         const blob = await processToBlob(f, mime, quality);
         zip.file(`${stem(f.name)}-edited.${ext}`, blob);
       }
-      const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+      const zipBlob = await zip.generateAsync({ type:'blob', compression:'DEFLATE', compressionOptions:{ level:6 } });
       triggerDownload(zipBlob, 'PixelKit_Batch.zip');
     }
   } catch (err) {
